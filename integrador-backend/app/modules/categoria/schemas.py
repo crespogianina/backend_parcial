@@ -21,7 +21,7 @@ class CategoriaUpdate(SQLModel):
     parent_id: Optional[int] = Field(default=None, ge=1)
 
 class CategoriaConHijosRead(CategoriaPublic):
-    hijos: list[CategoriaPublic] = []
+    hijos: list[CategoriaPublic] = Field(default_factory=list)
 
 class CategoriaList(SQLModel):
     data: List[CategoriaPublic]
@@ -33,4 +33,4 @@ class CategoriaTreeRead(SQLModel):
     descripcion: Optional[str] = None
     imagen_url: Optional[str] = None
     parent_id: Optional[int] = None
-    hijos: list["CategoriaTreeRead"] = []
+    hijos: list["CategoriaTreeRead"] = Field(default_factory=list)

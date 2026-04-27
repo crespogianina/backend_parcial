@@ -10,6 +10,8 @@ from .schemas import ProductoCreate, ProductoPublic, ProductoUpdate, ProductoLis
 from .unit_of_work import ProductoUnitOfWork
 from app.modules.categoria.unit_of_work import CategoriaUnitOfWork
 from app.modules.ingrediente.unit_of_work import IngredienteUnitOfWork
+from app.modules.categoria.schemas import CategoriaPublic
+from app.modules.ingrediente.schemas import IngredientePublic
 
 class ProductoService:
 
@@ -197,3 +199,15 @@ class ProductoService:
             producto = self._get_or_404(uow, producto_id)
             producto.deleted_at = datetime.utcnow()
             uow.productos.add(producto)
+
+    def obtener_categorias_producto(self, producto_id: int) -> list[CategoriaPublic]:
+        with ProductoUnitOfWork(self._session) as uow:
+            self._get_or_404(uow, producto_id)
+            categorias = uow.productos.get_categorias_by_producto(producto_id)
+            return [CategoriaPublic.model_validate(categoria) for categoria in categorias]
+
+    def obtener_ingredientes_producto(self, producto_id: int) -> list[IngredientePublic]:
+        with ProductoUnitOfWork(self._session) as uow:
+            self._get_or_404(uow, producto_id)
+            ingredientes = uow.productos.get_ingredientes_by_producto(producto_id)
+            return [IngredientePublic.model_validate(ingrediente) for ingrediente in ingredientes]

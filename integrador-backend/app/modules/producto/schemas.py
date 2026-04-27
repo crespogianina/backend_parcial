@@ -21,7 +21,7 @@ class ProductoBase(SQLModel):
 
 class ProductoCreate(ProductoBase):
     categorias: List[CategoriaAsignar] = Field(min_length=1)  
-    ingredientes: Optional[List[IngredienteAsignar]] = []
+    ingredientes: List[IngredienteAsignar] = Field(default_factory=list)
 
 class ProductoPublic(ProductoBase):
     id: int
