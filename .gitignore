@@ -1,0 +1,27 @@
+# entorno virtual
+venv/
+.venv/
+
+# variables de entorno
+.env
+
+# archivos de python
+__pycache__/
+*.pyc
+*.pyo
+
+# archivos de sistema
+.DS_Store
+Thumbs.db
+
+# vscode
+.vscode/
+
+# logs
+*.log
+
+# pytest
+.pytest_cache/
+
+# migrations compiladas
+alembic/versions/__pycache__/
