@@ -1,7 +1,10 @@
 
 from datetime import datetime
-from typing import Optional
-from sqlmodel import SQLModel, Field
+from typing import TYPE_CHECKING, List, Optional
+from sqlmodel import Relationship, SQLModel, Field
+
+if TYPE_CHECKING:
+    from app.modules.producto.models import ProductoIngrediente
 
 
 class Ingrediente(SQLModel, table=True):
@@ -16,3 +19,7 @@ class Ingrediente(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     deleted_at: Optional[datetime] = None
+
+    producto_ingredientes: List["ProductoIngrediente"] = Relationship(
+        back_populates="ingrediente"
+    )

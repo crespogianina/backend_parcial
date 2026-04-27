@@ -1,9 +1,14 @@
-# app/core/config.py
 from pydantic import computed_field
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    postgres_user: str
+    postgres_password: str
+    postgres_host: str
+    postgres_port: int
+    postgres_db: str
+
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
@@ -17,3 +22,6 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
+
+
+settings = Settings()
