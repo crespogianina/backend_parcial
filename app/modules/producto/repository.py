@@ -25,7 +25,8 @@ class ProductoRepository(BaseRepository[Producto]):
         )
 
     def count_productos_existentes(self) -> int:
-        return len(self.session.exec(select(Producto)).all())
+        statement = select(func.count()).select_from(Producto).where(Producto.deleted_at.is_(None))
+        return self.session.exec(statement).one()
     
     def get_categorias_by_producto(self, producto_id: int) -> List[Categoria]:
         statement = (
