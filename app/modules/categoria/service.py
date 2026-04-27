@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -36,8 +37,8 @@ class CategoriaService:
                 detail=f"El nombre '{nombre}' ya está en uso",
             )    
 
-    def validate_parent_id_different(self, parent_id: int, categoria_id: int):
-        if parent_id == categoria_id:
+    def validate_parent_id_different(self, parent_id: Optional[int], categoria_id: int):
+        if parent_id is not None and parent_id == categoria_id:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Una categia no puede ser padre de si misma"
