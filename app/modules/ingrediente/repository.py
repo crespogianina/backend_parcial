@@ -11,7 +11,7 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
     def get_by_nombre(self, nombre: str) -> Ingrediente | None:
         return self.session.exec(select(Ingrediente).where(func.lower(Ingrediente.nombre) == nombre.lower())).first()
 
-    def get_ingredientes_existentes(self, offset: int = 0, limit: int = 20, es_alergeno: Optional[bool] = None) -> list[Ingrediente]:
+    def get_ingredientes_existentes(self, es_alergeno: Optional[bool] = None, offset: int = 0, limit: int = 20) -> list[Ingrediente]:
         statement = select(Ingrediente).where(Ingrediente.deleted_at.is_(None))
 
         if es_alergeno is not None:

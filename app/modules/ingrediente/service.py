@@ -52,9 +52,9 @@ class IngredienteService:
 
         return result
 
-    def get_all(self, offset: int = 0, limit: int = 20) -> IngredienteList:
+    def get_all(self, es_alergeno: bool, offset: int = 0, limit: int = 20) -> IngredienteList:
         with IngredienteUnitOfWork(self._session) as uow:
-            ingredientes = uow.ingredientes.get_ingredientes_existentes(offset=offset, limit=limit)
+            ingredientes = uow.ingredientes.get_ingredientes_existentes(es_alergeno, offset=offset, limit=limit)
             total = uow.ingredientes.count_ingredientes_existentes()
 
             result = IngredienteList(
