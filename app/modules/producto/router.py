@@ -6,6 +6,8 @@ from sqlmodel import Session
 
 from app.core.database import get_session
 from app.modules.producto.schemas import ProductoCreate, ProductoPublic,  ProductoUpdate, ProductoList
+from app.modules.categoria.schemas import CategoriaPublic
+from app.modules.ingrediente.schemas import IngredientePublic
 from app.modules.producto.service import ProductoService
 
 router = APIRouter()
@@ -35,7 +37,11 @@ def edit_producto(id: Annotated[int, Path(gt=0)], producto: ProductoUpdate, svc:
 def eliminar_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> None:
     return svc.soft_delete(id)
 
-@router.get("/{id}/categorias", status_code=status.HTTP_200_OK, summary="Obtener categorias de un producto")
-def obtener_categorias_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)):
+@router.get("/{id}/categorias", response_model=List[CategoriaPublic], status_code=status.HTTP_200_OK, summary="Obtener categorias de un producto")
+def obtener_categorias_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service))-> List[CategoriaPublic]:
     return svc.obtener_categorias_producto(id)
+
+@router.get("/{id}/ingredientes", response_model=List[IngredientePublic], status_code=status.HTTP_200_OK, summary="Obtener los ingredientes de un producto")
+def obtener_ingredientess_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> List[IngredientePublic]:
+    return svc.obtener_ingredientes_producto(id)
 
