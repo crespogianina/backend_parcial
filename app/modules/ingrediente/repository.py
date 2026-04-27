@@ -29,8 +29,15 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
             ).all()
         )
 
-    def count(self) -> int:
-        return len(self.session.exec(select(Ingrediente)).all())
+    def count(self, es_alergeno) -> int:
+        statement = select(func.count()).select_from(Ingrediente).where(
+            Ingrediente.deleted_at.is_(None)
+        )
+
+        if es_alergeno is not None:
+            statement = statement.where(Ingrediente.es_alergeno == es_alergeno)
+
+        return self.session.exec(statement).one()
 
     def count_ingredientes_existentes(self) -> int:
         statement = select(func.count()).select_from(Ingrediente).where(
