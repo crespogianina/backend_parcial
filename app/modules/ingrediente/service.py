@@ -58,10 +58,22 @@ class IngredienteService:
             total = uow.ingredientes.count_ingredientes_existentes()
 
             result = IngredienteList(
-                data=[Ingrediente.model_validate(i) for i in ingredientes],
+                data=[IngredientePublic.model_validate(i) for i in ingredientes],
                 total=total,
             )
             
+        return result
+
+    def get_alergenos(self, offset: int = 0, limit: int = 20) -> IngredienteList:
+        with IngredienteUnitOfWork(self._session) as uow:
+            ingredientes = uow.ingredientes.get_ingredientes_alergenos(offset=offset, limit=limit)
+            total = len(ingredientes)
+
+            result = IngredienteList(
+                data=[IngredientePublic.model_validate(i) for i in ingredientes],
+                total=total,
+            )
+
         return result
 
     def get_by_id(self, ingrediente_id: int) -> IngredientePublic:
