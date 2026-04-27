@@ -29,14 +29,14 @@ def get_categorias_tree(
     return svc.get_tree()
 
 @router.get("/{id}", response_model=CategoriaPublic, status_code=status.HTTP_200_OK, summary="Obtener categoria por id")
-def get_categoria_por_id(svc: CategoriaService = Depends(get_categoria_service), id: int = Annotated[int, Path(gt=0)]) -> CategoriaPublic:
+def get_categoria_por_id(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> CategoriaPublic:
     return svc.get_by_id(id)
 
 @router.put("/{id}", response_model=CategoriaPublic, status_code=status.HTTP_200_OK, summary="Editar categoria por id")
-def edit_categoria(categoria : CategoriaUpdate,svc: CategoriaService = Depends(get_categoria_service), id: int = Annotated[int, Path(gt=0)]) -> CategoriaPublic:
+def edit_categoria(id: Annotated[int, Path(gt=0)], categoria: CategoriaUpdate, svc: CategoriaService = Depends(get_categoria_service)) -> CategoriaPublic:
     return svc.update(id, categoria)
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar categoria por id")
-def eliminar_categoria(svc: CategoriaService = Depends(get_categoria_service), id: int = Annotated[int, Path(gt=0)]) -> None:
+def eliminar_categoria(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> None:
     return svc.soft_delete(id)
 

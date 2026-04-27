@@ -1,5 +1,5 @@
 
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
@@ -24,15 +24,18 @@ def get_producto_existentes(svc: ProductoService = Depends(get_producto_service)
     return svc.get_all(offset, limit)
 
 @router.get("/{id}", response_model=ProductoPublic, status_code=status.HTTP_200_OK, summary="Obtener producto por id")
-def get_producto_por_id(svc: ProductoService = Depends(get_producto_service), id: int = Annotated[int, Path(gt=0)]) -> ProductoPublic:
+def get_producto_by_id(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> ProductoPublic:
     return svc.get_by_id(id)
 
 @router.put("/{id}", response_model=ProductoPublic, status_code=status.HTTP_200_OK, summary="Editar producto por id")
-def edit_producto(producto : ProductoUpdate,svc: ProductoService = Depends(get_producto_service), id: int = Annotated[int, Path(gt=0)]) -> ProductoPublic:
+def edit_producto(id: Annotated[int, Path(gt=0)], producto: ProductoUpdate, svc: ProductoService = Depends(get_producto_service)) -> ProductoPublic:
     return svc.update(id, producto)
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar producto por id")
-def eliminar_producto(svc: ProductoService = Depends(get_producto_service), id: int = Annotated[int, Path(gt=0)]) -> None:
+def eliminar_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> None:
     return svc.soft_delete(id)
 
+@router.get("/{id}/categorias", status_code=status.HTTP_200_OK, summary="Obtener categorias de un producto")
+def obtener_categorias_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)):
+    return svc.obtener_categorias_producto(id)
 
