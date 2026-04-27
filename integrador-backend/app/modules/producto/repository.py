@@ -26,7 +26,8 @@ class ProductoRepository(BaseRepository[Producto]):
         )
 
     def count_productos_existentes(self) -> int:
-        return len(self.session.exec(select(Producto)).all())
+        statement = select(func.count()).select_from(Producto).where(Producto.deleted_at.is_(None))
+        return self.session.exec(statement).one()
     
     def get_categorias_by_producto(self, producto_id: int) -> List[Categoria]:
         statement = (
@@ -51,3 +52,16 @@ class ProductoRepository(BaseRepository[Producto]):
         )
 
         return list(self.session.exec(statement).all())
+    
+    def delete_categorias_by_producto(self, producto_id: int) -> None:
+        links = self.session.exec(select(ProductoCategoria).where(ProductoCategoria.producto_id == producto_id)).all()
+
+        for link in links:
+            self.session.delete(link)
+
+
+    def delete_ingredientes_by_producto(self, producto_id: int) -> None:
+        links = self.session.exec(select(ProductoIngrediente).where(ProductoIngrediente.producto_id == producto_id)).all()
+
+        for link in links:
+            self.session.delete(link)

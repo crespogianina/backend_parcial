@@ -1,7 +1,6 @@
-from sqlmodel import Session, func, null, select
+from sqlmodel import Session, func, select
 from app.core.repository import BaseRepository
 from app.modules.ingrediente.models import Ingrediente
-
 
 class IngredienteRepository(BaseRepository[Ingrediente]):
     def __init__(self, session: Session) -> None:
@@ -24,4 +23,7 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
         return len(self.session.exec(select(Ingrediente)).all())
     
     def count_ingredientes_existentes(self) -> int:
-        return len(self.session.exec(select(Ingrediente).where(Ingrediente.deleted_at.is_(None))).all())
+        statement = select(func.count()).select_from(Ingrediente).where(
+            Ingrediente.deleted_at.is_(None)
+        )
+        return self.session.exec(statement).one()

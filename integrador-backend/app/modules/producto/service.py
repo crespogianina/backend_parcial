@@ -43,12 +43,18 @@ class ProductoService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"El nombre '{nombre}' ya está en uso",
             )
-        
 
-#revisar cuantro helpers
-    def _validar_categorias_existen(self, categorias: List[int]) -> None:
-        with CategoriaUnitOfWork(self._session) as uow:
-            for cat in categorias:
+    def _validate_no_duplicate_ids(self, ids: list[int], entity_name: str) -> None:
+        duplicated_ids = {item_id for item_id in ids if ids.count(item_id) > 1}
+
+        if duplicated_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No se permiten {entity_name} duplicados: {list(duplicated_ids)}"
+            )
+
+    def _validar_categorias_existen(self, uow: ProductoUnitOfWork, categorias: list[int]) -> None:
+        for cat in categorias:
                 categoria = uow.categorias.get_by_id(cat)
                 if not categoria or categoria.deleted_at is not None:
                     raise HTTPException(
@@ -56,15 +62,14 @@ class ProductoService:
                         detail=f"Categoria {cat} no encontrada",
                     )
 
-    def _validar_ingredientes_existen(self, ingredientes: List[int]) -> None:
-        with IngredienteUnitOfWork(self._session) as uow:
-            for ing in ingredientes:
-                ingrediente = uow.ingredientes.get_by_id(ing)
-                if not ingrediente or ingrediente.deleted_at is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Ingrediente {ing} no encontrado",
-                    )
+    def _validar_ingredientes_existen(self, uow: ProductoUnitOfWork, ingredientes: List[int]) -> None:
+        for ing in ingredientes:
+            ingrediente = uow.ingredientes.get_by_id(ing)
+            if not ingrediente or ingrediente.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Ingrediente {ing} no encontrado",
+                )
 
     def _reemplazar_categorias(self, uow: ProductoUnitOfWork, producto_id: int, categoria_ids: list[int]) -> None:
         uow.productos.delete_categorias_by_producto(producto_id)
@@ -92,17 +97,23 @@ class ProductoService:
     # ── Casos de uso ─────────────────────────────────────────────────────────
 
     def create(self, data: ProductoCreate) -> ProductoPublic:
-        self._validar_categorias_existen([c.categoria_id for c in data.categorias])
+        categoria_ids = [c.categoria_id for c in data.categorias]
+        ingrediente_ids = [i.ingrediente_id for i in data.ingredientes]
 
-        if data.ingredientes:
-            self._validar_ingredientes_existen([i.ingrediente_id for i in data.ingredientes])
+        self._validate_no_duplicate_ids(categoria_ids, "categorías")
+
+        if ingrediente_ids:
+            self._validate_no_duplicate_ids(ingrediente_ids, "ingredientes")
 
         with ProductoUnitOfWork(self._session) as uow:
+            self._validar_categorias_existen(uow,categoria_ids) 
+
+            if ingrediente_ids:
+                self._validar_ingredientes_existen(uow, ingrediente_ids)
+
             self._assert_nombre_unique(uow, data.nombre)
 
-            producto = Producto.model_validate(
-                data.model_dump(exclude={"categorias", "ingredientes"})
-            )
+            producto = Producto.model_validate(data.model_dump(exclude={"categorias", "ingredientes"}))
             uow.productos.add(producto)
             self._session.flush()  
 
@@ -158,9 +169,10 @@ class ProductoService:
                 setattr(producto, field, value)
 
             if data.categorias is not None:
-                self._validar_categorias_existen(
-                    [cat.categoria_id for cat in data.categorias]
-                )
+                categoria_ids = [cat.categoria_id for cat in data.categorias]
+
+                self._validate_no_duplicate_ids(categoria_ids, "categorías")
+                self._validar_categorias_existen(uow, categoria_ids)
 
                 uow.productos.delete_categorias_by_producto(producto_id)
 
@@ -173,9 +185,10 @@ class ProductoService:
                     uow.productos.add(link)
 
             if data.ingredientes is not None:
-                self._validar_ingredientes_existen(
-                    [ing.ingrediente_id for ing in data.ingredientes]
-                )
+                ingrediente_ids = [ing.ingrediente_id for ing in data.ingredientes]
+
+                self._validate_no_duplicate_ids(ingrediente_ids, "ingredientes")
+                self._validar_ingredientes_existen(uow, ingrediente_ids)
 
                 uow.productos.delete_ingredientes_by_producto(producto_id)
 
@@ -187,9 +200,8 @@ class ProductoService:
                     )
                     uow.productos.add(link)
 
-                producto.updated_at = datetime.utcnow()
-                uow.productos.add(producto)
-
+            producto.updated_at = datetime.utcnow()
+            uow.productos.add(producto)
             result = ProductoPublic.model_validate(producto)
 
         return result

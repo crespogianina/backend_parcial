@@ -16,13 +16,15 @@ class CategoriaRepository(BaseRepository[Categoria]):
             self.session.exec(select(Categoria).where(Categoria.deleted_at.is_(None)).offset(offset).limit(limit)).all()
         )
 
-    def get_categoria_three(self) -> list[Categoria]:
+    def get_categoria_tree(self) -> list[Categoria]:
         return list(
             self.session.exec(select(Categoria).where(Categoria.deleted_at.is_(None)).order_by(Categoria.nombre)).all()
         )
 
     def count_all_categorias(self) -> int:
-        return len(self.session.exec(select(Categoria)).all())
+        statement = select(func.count()).select_from(Categoria).where(Categoria)
+        return self.session.exec(statement).one()
 
     def count_categorias_existentes(self) -> int:
-        return len(self.session.exec(select(Categoria).where(Categoria.deleted_at.is_(None))).all())
+        statement = select(func.count()).select_from(Categoria).where(Categoria.deleted_at.is_(None))
+        return self.session.exec(statement).one()

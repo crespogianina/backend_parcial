@@ -38,6 +38,13 @@ class IngredienteService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"El nombre '{nombre}' ya está en uso",
             )
+        
+    def _validate_no_productos_asociados(self, ingrediente: Ingrediente) -> None:
+        if ingrediente.producto_ingredientes:
+            raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar un ingrediente asociado a productos"
+            )
 
     # ── Casos de uso ─────────────────────────────────────────────────────────
 
@@ -58,7 +65,7 @@ class IngredienteService:
             total = uow.ingredientes.count_ingredientes_existentes()
 
             result = IngredienteList(
-                data=[Ingrediente.model_validate(i) for i in ingredientes],
+                data=[IngredientePublic.model_validate(i) for i in ingredientes],
                 total=total,
             )
             
@@ -93,5 +100,6 @@ class IngredienteService:
     def soft_delete(self, ingrediente_id: int) -> None:
         with IngredienteUnitOfWork(self._session) as uow:
             ingrediente = self._get_or_404(uow, ingrediente_id)
+            self._validate_no_productos_asociados(ingrediente)
             ingrediente.deleted_at = datetime.utcnow()
             uow.ingredientes.add(ingrediente)

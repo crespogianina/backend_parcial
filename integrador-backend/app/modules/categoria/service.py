@@ -1,10 +1,11 @@
 from datetime import datetime
+from typing import List
 
 from fastapi import HTTPException, status
 from sqlmodel import Session
 from .unit_of_work import CategoriaUnitOfWork
 from .models import Categoria
-from .schemas import CategoriaCreate, CategoriaUpdate, CategoriaPublic, CategoriaList
+from .schemas import CategoriaCreate, CategoriaTreeRead, CategoriaUpdate, CategoriaPublic, CategoriaList
 
 class CategoriaService:
 
@@ -83,11 +84,13 @@ class CategoriaService:
 
         return result
 
-
     def update(self, categoria_id: int, data: CategoriaUpdate) -> CategoriaPublic: 
         with CategoriaUnitOfWork(self._session) as uow:
             categoria = self._get_or_404(uow, categoria_id)
-            self.validate_parent_id_different(data.parent_id, categoria_id)
+
+            if data.parent_id is not None:
+                self._get_or_404(uow, data.parent_id)
+                self.validate_parent_id_different(data.parent_id, categoria_id)
 
             if data.nombre and data.nombre != categoria.nombre:
                 self._assert_nombre_unique(uow, data.nombre)
@@ -113,9 +116,9 @@ class CategoriaService:
             uow.categorias.add(categoria)
 
 
-    def get_tree(self) -> list[dict]:
+    def get_tree(self) -> List[CategoriaTreeRead]:
         with CategoriaUnitOfWork(self._session) as uow:
-            categorias = uow.categorias.get_categoria_three()
+            categorias = uow.categorias.get_categoria_tree()
 
             categorias_dict = {}
 

@@ -12,7 +12,7 @@ class CategoriaCreate(CategoriaBase):
     pass
 
 class CategoriaPublic(CategoriaBase):
-    id: int = Field(default=1, ge=1)
+    id: int
 
 class CategoriaUpdate(SQLModel):
     nombre: Optional[str] = None
