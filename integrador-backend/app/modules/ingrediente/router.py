@@ -1,5 +1,5 @@
 
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
@@ -24,11 +24,11 @@ def get_ingredientes_existentes(svc: IngredienteService = Depends(get_ingredient
     return svc.get_all(offset, limit)
 
 @router.get("/{id}", response_model=IngredientePublic, status_code=status.HTTP_200_OK, summary="Obtener ingrediente por id")
-def get_ingredientes_existentes(svc: IngredienteService = Depends(get_ingrediente_service), id: int = Annotated[int, Path(gt=0)]) -> IngredienteList:
+def get_ingrediente_por_id(svc: IngredienteService = Depends(get_ingrediente_service), id: int = Annotated[int, Path(gt=0)]) -> IngredientePublic:
     return svc.get_by_id(id)
 
 @router.put("/{id}", response_model=IngredientePublic, status_code=status.HTTP_200_OK, summary="Editar ingrediente por id")
-def edit_ingrediente(ingrediente : IngredienteUpdate,svc: IngredienteService = Depends(get_ingrediente_service), id: int = Annotated[int, Path(gt=0)]) -> IngredienteList:
+def edit_ingrediente(ingrediente : IngredienteUpdate,svc: IngredienteService = Depends(get_ingrediente_service), id: int = Annotated[int, Path(gt=0)]) -> IngredientePublic:
     return svc.update(id, ingrediente)
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar ingrediente por id")
