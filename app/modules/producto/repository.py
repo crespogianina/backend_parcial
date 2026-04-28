@@ -47,7 +47,7 @@ class ProductoRepository(BaseRepository[Producto]):
             select(Ingrediente)
             .join(
                 ProductoIngrediente,
-                ProductoIngrediente.ingrediente_id == Categoria.id
+                ProductoIngrediente.ingrediente_id == Ingrediente.id
             )
             .where(ProductoIngrediente.producto_id == producto_id)
             .where(Ingrediente.deleted_at.is_(None))
