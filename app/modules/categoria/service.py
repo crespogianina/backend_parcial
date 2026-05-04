@@ -41,8 +41,24 @@ class CategoriaService:
         if parent_id is not None and parent_id == categoria_id:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Una categia no puede ser padre de si misma"
+                detail="Una categoria no puede ser padre de si misma"
             )
+
+    def validate_parent_no_cycle(self, uow: CategoriaUnitOfWork, categoria_id: int, parent_id: int):
+        # Recorre los padres hacia arriba para evitar ciclos en el árbol.
+        current = uow.categorias.get_by_id(parent_id)
+
+        while current is not None:
+            if current.id == categoria_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="No se puede asignar una categoría como padre de una de sus hijas"
+                )
+
+            if current.parent_id is None:
+                break
+
+            current = uow.categorias.get_by_id(current.parent_id)
 
     def _validate_no_active_children(self, categoria: Categoria) -> None:
         hijos_activos = [
@@ -91,6 +107,8 @@ class CategoriaService:
             if data.parent_id is not None:
                 self._get_or_404(uow, data.parent_id)
                 self.validate_parent_id_different(data.parent_id, categoria_id)
+                # Evitar que el nuevo padre sea un descendiente de la categoria (evitar ciclos)
+                self.validate_parent_no_cycle(uow, categoria_id, data.parent_id)
 
             if data.nombre and data.nombre != categoria.nombre:
                 self._assert_nombre_unique(uow, data.nombre)
@@ -122,6 +140,7 @@ class CategoriaService:
 
             categorias_dict = {}
 
+            # Primero armamos un diccionario para poder enlazar cada nodo con su padre.
             for categoria in categorias:
                 categorias_dict[categoria.id] = {
                     "id": categoria.id,
@@ -134,6 +153,7 @@ class CategoriaService:
 
             tree = []
 
+            # Después armamos la lista raíz y colgamos cada hijo en su padre.
             for categoria in categorias:
                 item = categorias_dict[categoria.id]
 

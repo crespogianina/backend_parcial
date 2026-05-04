@@ -12,6 +12,7 @@ def create_access_token(subject: str | Any, expires_delta: Optional[timedelta] =
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
+    # El token guarda el usuario en 'sub' y la fecha de vencimiento en 'exp'.
     to_encode = {
         "exp": expire,
         "sub": str(subject),
