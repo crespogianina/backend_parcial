@@ -11,13 +11,16 @@ class UsuarioService:
         self._session = session
 
     def create(self, data: UsuarioCreate) -> UsuarioPublic:
-        with UsuarioUnitOfWork(self._session) as uow:
-            if uow.usuarios.get_by_email(data.email):
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email ya registrado")
-            usuario = Usuario(email=data.email, password_hash=get_password_hash(data.password))
-            uow.usuarios.add(usuario)
-            return UsuarioPublic.model_validate(usuario)
+        from app.modules.usuario.repository import UsuarioRepository
+        repo = UsuarioRepository(self._session)
+        if repo.get_by_email(data.email):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email ya registrado")
+        usuario = Usuario(email=data.email, password_hash=get_password_hash(data.password))
+        usuario = repo.add(usuario)
+        self._session.commit()
+        return UsuarioPublic.model_validate(usuario)
 
     def get_by_email(self, email: str) -> Usuario | None:
-        with UsuarioUnitOfWork(self._session) as uow:
-            return uow.usuarios.get_by_email(email)
+        from app.modules.usuario.repository import UsuarioRepository
+        repo = UsuarioRepository(self._session)
+        return repo.get_by_email(email)
