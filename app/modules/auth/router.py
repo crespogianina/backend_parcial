@@ -15,7 +15,7 @@ async def login(data: LoginData, session: Session = Depends(get_session)):
     svc = UsuarioService(session)
     user = svc.get_by_email(data.email)
 
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user and not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email o contraseña incorrectos",
@@ -24,4 +24,5 @@ async def login(data: LoginData, session: Session = Depends(get_session)):
 
     access_token = create_access_token(subject=user.email)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "user": { "id": user.id, "email": user.email, "rol" : user.rol},
+}

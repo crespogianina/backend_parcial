@@ -15,7 +15,7 @@ class UsuarioService:
         repo = UsuarioRepository(self._session)
         if repo.get_by_email(data.email):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email ya registrado")
-        usuario = Usuario(email=data.email, password_hash=get_password_hash(data.password))
+        usuario = Usuario(email=data.email, password_hash=get_password_hash(data.password), rol=data.rol)
         usuario = repo.add(usuario)
         self._session.commit()
         return UsuarioPublic.model_validate(usuario)
