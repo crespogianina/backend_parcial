@@ -15,7 +15,13 @@ async def login(data: LoginData, session: Session = Depends(get_session)):
     svc = UsuarioService(session)
     user = svc.get_by_email(data.email)
 
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No existe ese mail asociado a un usuario",
+        )
+
+    if not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email o contraseña incorrectos",
