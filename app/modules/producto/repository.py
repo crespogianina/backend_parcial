@@ -16,20 +16,38 @@ class ProductoRepository(BaseRepository[Producto]):
         return self.session.exec(select(Producto).where(func.lower(Producto.nombre) == nombre.lower())).first()
 
     def get_productos_existentes(
-        self,
-        disponible: Optional[bool] = None,
-        offset: int = 0,
-        limit: int = 20,
-    ) -> list[Producto]:
+            self, 
+            nombre: str, 
+            descripcion: str, 
+            disponible:bool, 
+            offset: int = 0, 
+            limit: int = 20
+            ) -> list[Producto]:
         statement = select(Producto).where(Producto.deleted_at.is_(None))
+
+        if nombre is not None:
+            statement = statement.where(Producto.nombre.ilike(f"%{nombre}%"))
+
+        if descripcion is not None:
+            statement = statement.where(Producto.descripcion.ilike(f"%{descripcion}%"))
 
         if disponible is not None:
             statement = statement.where(Producto.disponible == disponible)
 
+        statement = statement.order_by(
+            Producto.updated_at.desc()
+        )
+
         return list(self.session.exec(statement.offset(offset).limit(limit)).all())
 
-    def count_productos_existentes(self, disponible: Optional[bool] = None) -> int:
+    def count_productos_existentes(self, nombre: str, descripcion: str, disponible:bool) -> int:
         statement = select(func.count()).select_from(Producto).where(Producto.deleted_at.is_(None))
+        
+        if nombre is not None:
+            statement = statement.where(Producto.nombre.ilike(f"%{nombre}%"))
+
+        if descripcion is not None:
+            statement = statement.where(Producto.descripcion.ilike(f"%{descripcion}%"))
 
         if disponible is not None:
             statement = statement.where(Producto.disponible == disponible)
@@ -78,3 +96,24 @@ class ProductoRepository(BaseRepository[Producto]):
         for link in links:
             self.session.delete(link)
         self.session.flush()
+
+    def get_categorias_asignadas_by_producto(
+        self,
+        producto_id: int
+    ) -> list[ProductoCategoria]:
+        statement = select(ProductoCategoria).where(
+            ProductoCategoria.producto_id == producto_id
+        )
+
+        return list(self.session.exec(statement).all())
+
+
+    def get_ingredientes_asignados_by_producto(
+        self,
+        producto_id: int
+    ) -> list[ProductoIngrediente]:
+        statement = select(ProductoIngrediente).where(
+            ProductoIngrediente.producto_id == producto_id
+        )
+
+        return list(self.session.exec(statement).all())

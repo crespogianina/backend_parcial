@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
 
 from app.core.database import get_session
-from app.modules.producto.schemas import ProductoCreate, ProductoPublic,  ProductoUpdate, ProductoList
+from app.modules.producto.schemas import ProductoCreate, ProductoDetalle, ProductoPublic,  ProductoUpdate, ProductoList
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from app.modules.producto.service import ProductoService
@@ -21,19 +21,18 @@ def get_producto_service(session: Session = Depends(get_session)) -> ProductoSer
 def create_producto(data: ProductoCreate, svc: ProductoService = Depends(get_producto_service)) -> ProductoPublic:
     return svc.create(data)
 
-@router.get("/", response_model=ProductoList, status_code=status.HTTP_200_OK, summary="Obtener todas los producto activos")
+@router.get("/", response_model=ProductoList, status_code=status.HTTP_200_OK, summary="Obtener todos los producto activos")
 def get_producto_existentes(
-    svc: ProductoService = Depends(get_producto_service),
+    svc: ProductoService = Depends(get_producto_service), 
     offset: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=50)] = 50,
-    disponible: Annotated[
-        Optional[bool],
-        Query(description="Filtrar por disponibilidad en carta (omitir para todos)"),
-    ] = None,
-) -> ProductoList:
-    return svc.get_all(disponible, offset, limit)
+    nombre: Annotated[Optional[str], Query()] = None,
+    descripcion: Annotated[Optional[str], Query()] = None,
+    disponible: Annotated[Optional[bool], Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 50
+    ) -> ProductoList:
+    return svc.get_all(nombre, descripcion, disponible, offset, limit)
 
-@router.get("/{id}", response_model=ProductoPublic, status_code=status.HTTP_200_OK, summary="Obtener producto por id")
+@router.get("/{id}", response_model=ProductoDetalle, status_code=status.HTTP_200_OK, summary="Obtener producto por id")
 def get_producto_by_id(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> ProductoPublic:
     return svc.get_by_id(id)
 

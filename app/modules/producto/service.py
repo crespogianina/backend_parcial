@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 
 from .models import Producto, ProductoCategoria, ProductoIngrediente
-from .schemas import ProductoCreate, ProductoPublic, ProductoUpdate, ProductoList
+from .schemas import ProductoCreate, ProductoDetalle, ProductoPublic, ProductoUpdate, ProductoList
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from .unit_of_work import ProductoUnitOfWork
@@ -31,8 +31,8 @@ class ProductoService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Producto con id={producto_id} fue eliminado",
-            )
-            
+            ) 
+         
         return producto
 
     def _assert_nombre_unique(self, uow: ProductoUnitOfWork, nombre: str) -> None:
@@ -135,17 +135,10 @@ class ProductoService:
 
         return result
 
-    def get_all(
-        self,
-        disponible: Optional[bool] = None,
-        offset: int = 0,
-        limit: int = 20,
-    ) -> ProductoList:
+    def get_all(self, nombre: str, descripcion: str, disponible:bool, offset: int = 0, limit: int = 20) -> ProductoList:
         with ProductoUnitOfWork(self._session) as uow:
-            productos = uow.productos.get_productos_existentes(
-                disponible, offset=offset, limit=limit
-            )
-            total = uow.productos.count_productos_existentes(disponible)
+            productos = uow.productos.get_productos_existentes(nombre, descripcion, disponible,offset=offset, limit=limit)
+            total = uow.productos.count_productos_existentes(nombre, descripcion, disponible)
 
             result = ProductoList(
                 data=[ProductoPublic.model_validate(h) for h in productos],
@@ -154,12 +147,54 @@ class ProductoService:
             
         return result
 
-    def get_by_id(self, producto_id: int) -> ProductoPublic:
-        with ProductoUnitOfWork(self._session) as uow:
-            producto = self._get_or_404(uow, producto_id)
-            result = ProductoPublic.model_validate(producto)
+    # def get_by_id(self, producto_id: int) -> ProductoPublic:
+    #     with ProductoUnitOfWork(self._session) as uow:
+    #         producto = self._get_or_404(uow, producto_id)
+    #         result = ProductoPublic.model_validate(producto)
 
-        return result
+    #     return result
+
+    def get_by_id(self, producto_id: int) -> ProductoDetalle:
+        with ProductoUnitOfWork(self._session) as uow:
+            producto = uow.productos.get_by_id(producto_id)
+
+            if producto is None or producto.deleted_at is not None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Producto no encontrado"
+                )
+
+            categorias = uow.productos.get_categorias_asignadas_by_producto(
+                producto_id
+            )
+
+            ingredientes = uow.productos.get_ingredientes_asignados_by_producto(
+                producto_id
+            )
+
+            return ProductoDetalle(
+                id=producto.id,
+                nombre=producto.nombre,
+                descripcion=producto.descripcion,
+                precio_base=producto.precio_base,
+                imagenes_url=producto.imagenes_url,
+                stock_cantidad=producto.stock_cantidad,
+                disponible=producto.disponible,
+                categorias=[
+                    {
+                        "categoria_id": c.categoria_id,
+                        "es_principal": c.es_principal,
+                    }
+                    for c in categorias
+                ],
+                ingredientes=[
+                    {
+                        "ingrediente_id": i.ingrediente_id,
+                        "es_removible": i.es_removible,
+                    }
+                    for i in ingredientes
+                ],
+            )
 
     def update(self, producto_id: int, data: ProductoUpdate) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:

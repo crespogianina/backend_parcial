@@ -20,8 +20,15 @@ def create_ingrediente(data: IngredienteCreate, svc: IngredienteService = Depend
     return svc.create(data)
 
 @router.get("/", response_model=IngredienteList, status_code=status.HTTP_200_OK, summary="Obtener todos los ingredientes activos")
-def get_ingredientes_existentes(svc: IngredienteService = Depends(get_ingrediente_service),offset: Annotated[int, Query(ge=0)] = 0, limit: Annotated[int, Query(ge=1, le=50)] = 50, es_alergeno: Annotated[Optional[bool], Query()] = None) -> IngredienteList:
-    return svc.get_all(es_alergeno,offset, limit )
+def get_ingredientes_existentes(
+    svc: IngredienteService = Depends(get_ingrediente_service),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 50,
+    es_alergeno: Annotated[Optional[bool], Query()] = None,
+    nombre: Annotated[Optional[str], Query()] = None,
+    descripcion: Annotated[Optional[str], Query()] = None,
+    ) -> IngredienteList:
+    return svc.get_all(es_alergeno,nombre, descripcion, offset, limit )
 
 @router.get("/alergenos", response_model=IngredienteList, status_code=status.HTTP_200_OK, summary="Obtener todos los ingredientes alérgenos")
 def get_ingredientes_alergenos(

@@ -14,17 +14,24 @@ class CategoriaRepository(BaseRepository[Categoria]):
         return self.session.exec(select(Categoria).where(func.lower(Categoria.nombre) == nombre.lower())).first()
 
     def get_categorias_existentes(
-        self,
-        es_raiz: Optional[bool] = None,
-        offset: int = 0,
-        limit: int = 20,
-    ) -> list[Categoria]:
+            self,   
+            nombre: Optional[str] = None, 
+            descripcion: Optional[str] = None, 
+            offset: int = 0, 
+            limit: int = 20
+            ) -> list[Categoria]:
+
         statement = select(Categoria).where(Categoria.deleted_at.is_(None))
 
-        if es_raiz is True:
-            statement = statement.where(Categoria.parent_id.is_(None))
-        elif es_raiz is False:
-            statement = statement.where(Categoria.parent_id.is_not(None))
+        if nombre is not None:
+            statement = statement.where(Categoria.nombre.ilike(f"%{nombre}%"))
+
+        if descripcion is not None:
+            statement = statement.where(Categoria.descripcion.ilike(f"%{descripcion}%"))
+
+        statement = statement.order_by(
+            Categoria.updated_at.desc()
+        )
 
         return list(self.session.exec(statement.offset(offset).limit(limit)).all())
 
@@ -37,12 +44,13 @@ class CategoriaRepository(BaseRepository[Categoria]):
         statement = select(func.count()).select_from(Categoria).where(Categoria)
         return self.session.exec(statement).one()
 
-    def count_categorias_existentes(self, es_raiz: Optional[bool] = None) -> int:
+    def count_categorias_existentes(self, nombre: Optional[str] = None, descripcion: Optional[str] = None) -> int:
         statement = select(func.count()).select_from(Categoria).where(Categoria.deleted_at.is_(None))
+        
+        if nombre is not None:
+            statement = statement.where(Categoria.nombre.ilike(f"%{nombre}%"))
 
-        if es_raiz is True:
-            statement = statement.where(Categoria.parent_id.is_(None))
-        elif es_raiz is False:
-            statement = statement.where(Categoria.parent_id.is_not(None))
+        if descripcion is not None:
+            statement = statement.where(Categoria.descripcion.ilike(f"%{descripcion}%"))
 
         return self.session.exec(statement).one()
