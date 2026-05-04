@@ -1,6 +1,6 @@
 # app/modules/productos/service.py
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -135,10 +135,17 @@ class ProductoService:
 
         return result
 
-    def get_all(self, offset: int = 0, limit: int = 20) -> ProductoList:
+    def get_all(
+        self,
+        disponible: Optional[bool] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> ProductoList:
         with ProductoUnitOfWork(self._session) as uow:
-            productos = uow.productos.get_productos_existentes(offset=offset, limit=limit)
-            total = uow.productos.count_productos_existentes()
+            productos = uow.productos.get_productos_existentes(
+                disponible, offset=offset, limit=limit
+            )
+            total = uow.productos.count_productos_existentes(disponible)
 
             result = ProductoList(
                 data=[ProductoPublic.model_validate(h) for h in productos],

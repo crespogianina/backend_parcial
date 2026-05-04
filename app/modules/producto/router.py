@@ -1,5 +1,5 @@
 
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
@@ -22,8 +22,16 @@ def create_producto(data: ProductoCreate, svc: ProductoService = Depends(get_pro
     return svc.create(data)
 
 @router.get("/", response_model=ProductoList, status_code=status.HTTP_200_OK, summary="Obtener todas los producto activos")
-def get_producto_existentes(svc: ProductoService = Depends(get_producto_service), offset: Annotated[int, Query(ge=0)] = 0,limit: Annotated[int, Query(ge=1, le=50)] = 50) -> ProductoList:
-    return svc.get_all(offset, limit)
+def get_producto_existentes(
+    svc: ProductoService = Depends(get_producto_service),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 50,
+    disponible: Annotated[
+        Optional[bool],
+        Query(description="Filtrar por disponibilidad en carta (omitir para todos)"),
+    ] = None,
+) -> ProductoList:
+    return svc.get_all(disponible, offset, limit)
 
 @router.get("/{id}", response_model=ProductoPublic, status_code=status.HTTP_200_OK, summary="Obtener producto por id")
 def get_producto_by_id(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> ProductoPublic:

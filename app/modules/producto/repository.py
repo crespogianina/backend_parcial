@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from sqlmodel import Session, func, null, select
 from app.core.repository import BaseRepository
@@ -15,18 +15,25 @@ class ProductoRepository(BaseRepository[Producto]):
     def get_by_nombre(self, nombre: str) -> Producto | None:
         return self.session.exec(select(Producto).where(func.lower(Producto.nombre) == nombre.lower())).first()
 
-    def get_productos_existentes(self, offset: int = 0, limit: int = 20) -> list[Producto]:
-        return list(
-            self.session.exec(
-                select(Producto)
-                .where(Producto.deleted_at.is_(None))
-                .offset(offset)
-                .limit(limit)
-            ).all()
-        )
+    def get_productos_existentes(
+        self,
+        disponible: Optional[bool] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> list[Producto]:
+        statement = select(Producto).where(Producto.deleted_at.is_(None))
 
-    def count_productos_existentes(self) -> int:
+        if disponible is not None:
+            statement = statement.where(Producto.disponible == disponible)
+
+        return list(self.session.exec(statement.offset(offset).limit(limit)).all())
+
+    def count_productos_existentes(self, disponible: Optional[bool] = None) -> int:
         statement = select(func.count()).select_from(Producto).where(Producto.deleted_at.is_(None))
+
+        if disponible is not None:
+            statement = statement.where(Producto.disponible == disponible)
+
         return self.session.exec(statement).one()
     
     def get_categorias_by_producto(self, producto_id: int) -> List[Categoria]:

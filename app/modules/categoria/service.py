@@ -68,10 +68,17 @@ class CategoriaService:
 
         return result
 
-    def get_all_active(self, offset: int = 0, limit: int = 20) -> CategoriaList:
+    def get_all_active(
+        self,
+        es_raiz: Optional[bool] = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> CategoriaList:
         with CategoriaUnitOfWork(self._session) as uow:
-            categorias = uow.categorias.get_categorias_existentes(offset=offset, limit=limit)
-            total = uow.categorias.count_categorias_existentes()
+            categorias = uow.categorias.get_categorias_existentes(
+                es_raiz, offset=offset, limit=limit
+            )
+            total = uow.categorias.count_categorias_existentes(es_raiz)
 
             result = CategoriaList(data=[CategoriaPublic.model_validate(c) for c in categorias],total=total)
             

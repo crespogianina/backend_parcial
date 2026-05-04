@@ -1,5 +1,5 @@
 
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
@@ -20,8 +20,13 @@ def create_categoria(data: CategoriaCreate, svc: CategoriaService = Depends(get_
     return svc.create(data)
 
 @router.get("/", response_model=CategoriaList, status_code=status.HTTP_200_OK, summary="Obtener todas las categorias activas")
-def get_categorias_existentes(svc: CategoriaService = Depends(get_categoria_service), offset: Annotated[int, Query(ge=0)] = 0, limit: Annotated[int, Query(ge=1, le=50)] = 50) -> CategoriaList:
-    return svc.get_all_active(offset, limit)
+def get_categorias_existentes(
+    svc: CategoriaService = Depends(get_categoria_service),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 50,
+    es_raiz: Annotated[Optional[bool], Query(description="Filtrar categorías raíz (true) o con padre (false)")] = None,
+) -> CategoriaList:
+    return svc.get_all_active(es_raiz, offset, limit)
 
 @router.get("/tree", response_model=List[CategoriaTreeRead], status_code=status.HTTP_200_OK, summary="Obtener todas las categorias y sus subcategorias")
 def get_categorias_tree(
