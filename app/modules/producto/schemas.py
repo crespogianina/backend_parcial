@@ -25,10 +25,8 @@ class ProductoCreate(ProductoBase):
 
 class ProductoPublic(ProductoBase):
     id: int
-
-class ProductoDetalle(ProductoPublic):
-    categorias: List[CategoriaAsignar] = Field(default_factory=list)
-    ingredientes: List[IngredienteAsignar] = Field(default_factory=list)
+    categorias: List[CategoriaProductoRead] = Field(default_factory=list)
+    ingredientes: List[IngredienteProductoRead] = Field(default_factory=list)
 
 class ProductoUpdate(SQLModel):
     nombre: Optional[str] = Field(default=None, min_length=2, max_length=150)
@@ -43,3 +41,14 @@ class ProductoUpdate(SQLModel):
 class ProductoList(SQLModel):
     data: List[ProductoPublic]
     total: int
+
+class CategoriaProductoRead(SQLModel):
+    id: int
+    nombre: str
+    es_principal: bool
+
+
+class IngredienteProductoRead(SQLModel):
+    id: int
+    nombre: str
+    es_removible: bool

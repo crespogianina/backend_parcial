@@ -117,3 +117,38 @@ class ProductoRepository(BaseRepository[Producto]):
         )
 
         return list(self.session.exec(statement).all())
+
+    def get_categorias_resumen_by_producto(self, producto_id: int):
+        statement = (
+            select(
+                Categoria.id,
+                Categoria.nombre,
+                ProductoCategoria.es_principal,
+            )
+            .join(
+                ProductoCategoria,
+                ProductoCategoria.categoria_id == Categoria.id,
+            )
+            .where(ProductoCategoria.producto_id == producto_id)
+            .where(Categoria.deleted_at.is_(None))
+        )
+
+        return self.session.exec(statement).all()
+
+
+    def get_ingredientes_resumen_by_producto(self, producto_id: int):
+        statement = (
+            select(
+                Ingrediente.id,
+                Ingrediente.nombre,
+                ProductoIngrediente.es_removible,
+            )
+            .join(
+                ProductoIngrediente,
+                ProductoIngrediente.ingrediente_id == Ingrediente.id,
+            )
+            .where(ProductoIngrediente.producto_id == producto_id)
+            .where(Ingrediente.deleted_at.is_(None))
+        )
+
+        return self.session.exec(statement).all()

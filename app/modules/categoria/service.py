@@ -76,13 +76,29 @@ class CategoriaService:
 
     def create(self, data: CategoriaCreate) -> CategoriaPublic: 
         with CategoriaUnitOfWork(self._session) as uow:
-            self._assert_nombre_unique(uow, data.nombre)
+            categoria_existente = uow.categorias.get_by_name(data.nombre)
+
+            if categoria_existente:
+                if categoria_existente.deleted_at is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"El nombre '{data.nombre}' ya está en uso",
+                    )
+
+                categoria_existente.descripcion = data.descripcion
+                categoria_existente.imagen_url = data.imagen_url
+                categoria_existente.parent_id = data.parent_id
+                categoria_existente.deleted_at = None
+                categoria_existente.updated_at = datetime.utcnow()
+
+                uow.categorias.add(categoria_existente)
+
+                return CategoriaPublic.model_validate(categoria_existente)
 
             categoria = Categoria.model_validate(data)
             uow.categorias.add(categoria)
-            result = CategoriaPublic.model_validate(categoria) 
 
-        return result
+        return CategoriaPublic.model_validate(categoria)
 
     def get_all_active(self, nombre: str, descripcion: str, offset: int = 0, limit: int = 20) -> CategoriaList:
         with CategoriaUnitOfWork(self._session) as uow:

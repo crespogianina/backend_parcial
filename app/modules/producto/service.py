@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 
 from .models import Producto, ProductoCategoria, ProductoIngrediente
-from .schemas import ProductoCreate, ProductoDetalle, ProductoPublic, ProductoUpdate, ProductoList
+from .schemas import CategoriaProductoRead, IngredienteProductoRead, ProductoCreate, ProductoPublic, ProductoUpdate, ProductoList
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from .unit_of_work import ProductoUnitOfWork
@@ -91,6 +91,36 @@ class ProductoService:
                 es_removible=False,
             )
             uow.productos.add(link)                
+    
+    def _map_to_producto_public(self, uow: ProductoUnitOfWork, producto: Producto,) -> ProductoPublic:
+        categorias = uow.productos.get_categorias_resumen_by_producto(producto.id)
+        ingredientes = uow.productos.get_ingredientes_resumen_by_producto(producto.id)
+
+        return ProductoPublic(
+            id=producto.id,
+            nombre=producto.nombre,
+            descripcion=producto.descripcion,
+            precio_base=producto.precio_base,
+            imagenes_url=producto.imagenes_url,
+            stock_cantidad=producto.stock_cantidad,
+            disponible=producto.disponible,
+            categorias=[
+                CategoriaProductoRead(
+                    id=c.id,
+                    nombre=c.nombre,
+                    es_principal=c.es_principal,
+                )
+                for c in categorias
+            ],
+            ingredientes=[
+                IngredienteProductoRead(
+                    id=i.id,
+                    nombre=i.nombre,
+                    es_removible=i.es_removible,
+                )
+                for i in ingredientes
+            ],
+        )
                 
     # ── Casos de uso ─────────────────────────────────────────────────────────
 
@@ -137,14 +167,28 @@ class ProductoService:
 
     def get_all(self, nombre: str, descripcion: str, disponible:bool, offset: int = 0, limit: int = 20) -> ProductoList:
         with ProductoUnitOfWork(self._session) as uow:
-            productos = uow.productos.get_productos_existentes(nombre, descripcion, disponible,offset=offset, limit=limit)
-            total = uow.productos.count_productos_existentes(nombre, descripcion, disponible)
+            productos = uow.productos.get_productos_existentes(
+                nombre,
+                descripcion,
+                disponible,
+                offset=offset,
+                limit=limit,
+            )
+
+            total = uow.productos.count_productos_existentes(
+                nombre,
+                descripcion,
+                disponible,
+            )
 
             result = ProductoList(
-                data=[ProductoPublic.model_validate(h) for h in productos],
+                data=[
+                    self._map_to_producto_public(uow, producto)
+                    for producto in productos
+                ],
                 total=total,
             )
-            
+
         return result
 
     # def get_by_id(self, producto_id: int) -> ProductoPublic:
@@ -154,47 +198,13 @@ class ProductoService:
 
     #     return result
 
-    def get_by_id(self, producto_id: int) -> ProductoDetalle:
+    def get_by_id(self, producto_id: int) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:
-            producto = uow.productos.get_by_id(producto_id)
+            producto = self._get_or_404(uow, producto_id)
 
-            if producto is None or producto.deleted_at is not None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Producto no encontrado"
-                )
+            result = self._map_to_producto_public(uow, producto)
 
-            categorias = uow.productos.get_categorias_asignadas_by_producto(
-                producto_id
-            )
-
-            ingredientes = uow.productos.get_ingredientes_asignados_by_producto(
-                producto_id
-            )
-
-            return ProductoDetalle(
-                id=producto.id,
-                nombre=producto.nombre,
-                descripcion=producto.descripcion,
-                precio_base=producto.precio_base,
-                imagenes_url=producto.imagenes_url,
-                stock_cantidad=producto.stock_cantidad,
-                disponible=producto.disponible,
-                categorias=[
-                    {
-                        "categoria_id": c.categoria_id,
-                        "es_principal": c.es_principal,
-                    }
-                    for c in categorias
-                ],
-                ingredientes=[
-                    {
-                        "ingrediente_id": i.ingrediente_id,
-                        "es_removible": i.es_removible,
-                    }
-                    for i in ingredientes
-                ],
-            )
+        return result
 
     def update(self, producto_id: int, data: ProductoUpdate) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:

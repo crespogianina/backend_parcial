@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
 
 from app.core.database import get_session
-from app.modules.producto.schemas import ProductoCreate, ProductoDetalle, ProductoPublic,  ProductoUpdate, ProductoList
+from app.modules.producto.schemas import ProductoCreate, ProductoPublic,  ProductoUpdate, ProductoList
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from app.modules.producto.service import ProductoService
@@ -32,7 +32,7 @@ def get_producto_existentes(
     ) -> ProductoList:
     return svc.get_all(nombre, descripcion, disponible, offset, limit)
 
-@router.get("/{id}", response_model=ProductoDetalle, status_code=status.HTTP_200_OK, summary="Obtener producto por id")
+@router.get("/{id}", response_model=ProductoPublic, status_code=status.HTTP_200_OK, summary="Obtener producto por id")
 def get_producto_by_id(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> ProductoPublic:
     return svc.get_by_id(id)
 

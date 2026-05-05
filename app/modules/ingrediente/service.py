@@ -51,14 +51,27 @@ class IngredienteService:
 
     def create(self, data: IngredienteCreate) -> IngredientePublic: 
         with IngredienteUnitOfWork(self._session) as uow:
-            self._assert_nombre_unique(uow, data.nombre)
+            ingrediente_existente = uow.ingredientes.get_by_nombre(data.nombre)
+
+            if ingrediente_existente:
+                if ingrediente_existente.deleted_at is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"El nombre '{data.nombre}' ya está en uso",
+                    )
+
+                ingrediente_existente.descripcion = data.descripcion
+                ingrediente_existente.deleted_at = None
+                ingrediente_existente.updated_at = datetime.utcnow()
+
+                uow.ingredientes.add(ingrediente_existente)
+
+                return IngredientePublic.model_validate(ingrediente_existente)
 
             ingrediente = Ingrediente.model_validate(data)
             uow.ingredientes.add(ingrediente)
 
-            result = IngredientePublic.model_validate(ingrediente)            
-
-        return result
+        return IngredientePublic.model_validate(ingrediente)
 
     def get_all(self, es_alergeno: bool, nombre: str, descripcion: str, offset: int = 0, limit: int = 20) -> IngredienteList:
         with IngredienteUnitOfWork(self._session) as uow:
