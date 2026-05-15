@@ -1,19 +1,4 @@
-"""
-Service de Usuario — lógica de negocio.
-
-Stateless, orquesta operaciones sobre los repositorios a través del UoW.
-Lanza HTTPException. No hace commit/rollback directamente.
-
-Capa: Service
-Conoce a: UoW, Repository (indirectamente vía UoW)
-NO conoce a: Router
-
-Regla de imports:
-    Router → Service → UoW → Repository → Model
-"""
-
 from fastapi import HTTPException, status
-
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.uow import UnitOfWork
@@ -21,13 +6,11 @@ from app.modules.usuarios.model import Usuario, UserCreate, Token, UserPublic
 
 
 class UsuarioService:
-    """Lógica de negocio para autenticación y gestión de usuarios."""
 
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
     def register(self, user_in: UserCreate):
-        """Registra un nuevo usuario. El rol siempre es 'user'."""
         if self.uow.usuarios.get_by_username(user_in.username):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -52,7 +35,6 @@ class UsuarioService:
         return rta
 
     def authenticate(self, username: str, password: str) -> Token:
-        """Autentica con username + password y retorna un Token con JWT."""
         user = self.uow.usuarios.get_by_username(username)
 
         if not user or not verify_password(password, user.hashed_password):
@@ -78,11 +60,9 @@ class UsuarioService:
         )
 
     def list_all(self) -> list[Usuario]:
-        """Lista todos los usuarios."""
         return self.uow.usuarios.get_all()
 
     def set_disabled(self, user_id: int, disabled: bool) -> Usuario:
-        """Activa o desactiva la cuenta de un usuario."""
         user = self.uow.usuarios.get_by_id(user_id)
         if not user:
             raise HTTPException(
