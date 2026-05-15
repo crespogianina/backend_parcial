@@ -1,14 +1,3 @@
-"""
-Repositorio de Usuario.
-
-Acceso a BD: queries sin lógica de negocio.
-Hereda de BaseRepository[Usuario] y agrega queries específicas.
-
-Capa: Repository
-Conoce a: Model (Usuario), Session
-NO conoce a: Service, Router
-"""
-
 from sqlmodel import Session, select
 
 from app.core.base_repository import BaseRepository
