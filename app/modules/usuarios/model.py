@@ -1,12 +1,3 @@
-"""
-Modelo de Usuario — tabla 'usuario' en PostgreSQL.
-
-Campos clave para seguridad:
-  - hashed_password: hash bcrypt (nunca texto plano).
-  - role: "user" | "admin" — usado por require_role() para RBAC.
-  - disabled: permite desactivar cuentas sin eliminarlas.
-"""
-
 from sqlmodel import SQLModel, Field
 from pydantic import EmailStr
 
@@ -17,14 +8,10 @@ class Usuario(SQLModel, table=True):
     full_name:       str
     email:           str        = Field(index=True, unique=True)  
     hashed_password: str
-    role:            str        = Field(default="user")           # "user" | "admin"
+    role:            str        = Field(default="user")     
     disabled:        bool       = Field(default=False)
 
-
-# ─── Esquemas Pydantic (sin table=True) ──────────────────────────────────────
-
 class UserCreate(SQLModel):
-    """Datos requeridos para registrar un usuario."""
     username:  str
     full_name: str
     email:     EmailStr
@@ -32,7 +19,6 @@ class UserCreate(SQLModel):
 
 
 class UserPublic(SQLModel):
-    """Vista pública del usuario — excluye hashed_password."""
     id:        int
     username:  str
     full_name: str
