@@ -19,20 +19,12 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
         return list(self.session.exec(statement.offset(offset).limit(limit)).all())
 
     def get_ingredientes_alergenos(self, offset: int = 0, limit: int = 20) -> list[Ingrediente]:
-        return list(
-            self.session.exec(
-                select(Ingrediente)
-                .where(Ingrediente.deleted_at.is_(None))
-                .where(Ingrediente.es_alergeno == True)
-                .offset(offset)
-                .limit(limit)
-            ).all()
-        )
+        statement = select(Ingrediente).where(Ingrediente.deleted_at.is_(None)).where(Ingrediente.es_alergeno == True).offset(offset).limit(limit) 
+
+        return list(self.session.exec(statement).all())
 
     def count(self, es_alergeno) -> int:
-        statement = select(func.count()).select_from(Ingrediente).where(
-            Ingrediente.deleted_at.is_(None)
-        )
+        statement = select(func.count()).select_from(Ingrediente).where(Ingrediente.deleted_at.is_(None))
 
         if es_alergeno is not None:
             statement = statement.where(Ingrediente.es_alergeno == es_alergeno)
@@ -40,7 +32,6 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
         return self.session.exec(statement).one()
 
     def count_ingredientes_existentes(self) -> int:
-        statement = select(func.count()).select_from(Ingrediente).where(
-            Ingrediente.deleted_at.is_(None)
-        )
+        statement = select(func.count()).select_from(Ingrediente).where(Ingrediente.deleted_at.is_(None))
+        
         return self.session.exec(statement).one()
