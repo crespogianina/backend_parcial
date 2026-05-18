@@ -1,5 +1,5 @@
 
-from typing import Annotated, List, Optional      
+from typing import Annotated, Optional      
 
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
@@ -17,11 +17,18 @@ def get_ingrediente_service(session: Session = Depends(get_session)) -> Ingredie
 
 @router.post("/", response_model=IngredientePublic, status_code=status.HTTP_201_CREATED, summary="Crear un ingrediente")
 def create_ingrediente(data: IngredienteCreate, svc: IngredienteService = Depends(get_ingrediente_service)) -> IngredientePublic:
-    return svc.create(data)
+    return svc.create_ingrediente(data)
 
-@router.get("/", response_model=IngredienteList, status_code=status.HTTP_200_OK, summary="Obtener todos los ingredientes activos")
-def get_ingredientes_existentes(svc: IngredienteService = Depends(get_ingrediente_service),offset: Annotated[int, Query(ge=0)] = 0, limit: Annotated[int, Query(ge=1, le=50)] = 50, es_alergeno: Annotated[Optional[bool], Query()] = None) -> IngredienteList:
-    return svc.get_all(es_alergeno,offset, limit )
+@router.get("/", response_model=IngredienteList, status_code=status.HTTP_200_OK, summary="Obtener todos los ingredientes")
+def get_all_ingredientes(
+    svc: IngredienteService = Depends(get_ingrediente_service),
+    offset: Annotated[int, Query(ge=0)] = 0, 
+    limit: Annotated[int, Query(ge=1, le=50)] = 50, 
+    es_alergeno: Annotated[Optional[bool], Query()] = None,
+    nombre: Annotated[Optional[str], Query()] = None,
+    descripcion: Annotated[Optional[str], Query()] = None
+    ) -> IngredienteList:
+    return svc.get_all(es_alergeno,nombre, descripcion, offset, limit )
 
 @router.get("/alergenos", response_model=IngredienteList, status_code=status.HTTP_200_OK, summary="Obtener todos los ingredientes alérgenos")
 def get_ingredientes_alergenos(
@@ -29,7 +36,7 @@ def get_ingredientes_alergenos(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=50)] = 50
 ) -> IngredienteList:
-    return svc.get_alergenos(offset, limit)
+    return svc.get_all( es_alergeno=True, offset=offset, limit=limit)
 
 @router.get("/{id}", response_model=IngredientePublic, status_code=status.HTTP_200_OK, summary="Obtener ingrediente por id")
 def get_ingrediente_by_id(id: Annotated[int, Path(gt=0)], svc: IngredienteService = Depends(get_ingrediente_service)) -> IngredientePublic:

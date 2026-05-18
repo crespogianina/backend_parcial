@@ -25,6 +25,7 @@ class ProductoCreate(ProductoBase):
 
 class ProductoPublic(ProductoBase):
     id: int
+    activo: bool
 
 class ProductoUpdate(SQLModel):
     nombre: Optional[str] = Field(default=None, min_length=2, max_length=150)

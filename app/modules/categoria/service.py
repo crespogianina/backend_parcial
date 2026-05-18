@@ -30,6 +30,7 @@ class CategoriaService:
         
         return categoria
 
+
     def _assert_nombre_unique(self, uow: CategoriaUnitOfWork, nombre: str) -> None:
         if uow.categorias.get_by_name(nombre):
             raise HTTPException(
@@ -37,12 +38,14 @@ class CategoriaService:
                 detail=f"El nombre '{nombre}' ya está en uso",
             )    
 
+
     def validate_parent_id_different(self, parent_id: Optional[int], categoria_id: int):
         if parent_id is not None and parent_id == categoria_id:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Una categia no puede ser padre de si misma"
             )
+
 
     def _validate_no_active_children(self, categoria: Categoria) -> None:
         hijos_activos = [
@@ -64,25 +67,32 @@ class CategoriaService:
 
             categoria = Categoria.model_validate(data)
             uow.categorias.add(categoria)
-            result = CategoriaPublic.model_validate(categoria) 
+            result = CategoriaPublic(**categoria.model_dump(), activo=categoria.deleted_at is None) 
 
         return result
 
-    def get_all_active(self, offset: int = 0, limit: int = 20) -> CategoriaList:
-        with CategoriaUnitOfWork(self._session) as uow:
-            categorias = uow.categorias.get_categorias_existentes(offset=offset, limit=limit)
-            total = uow.categorias.count_categorias_existentes()
 
-            result = CategoriaList(data=[CategoriaPublic.model_validate(c) for c in categorias],total=total)
+    def get_all_categorias(self, nombre: Optional[str] = None, descripcion: Optional[str] = None, offset: int = 0, limit: int = 20) -> CategoriaList:
+        with CategoriaUnitOfWork(self._session) as uow:
+            categorias = uow.categorias.get_all_categorias(nombre=nombre, descripcion=descripcion, offset=offset, limit=limit)
+            total = uow.categorias.count_all_categorias(nombre=nombre, descripcion=descripcion)
+
+            result = CategoriaList(
+                data = [CategoriaPublic(**i.model_dump(), activo=i.deleted_at is None)
+                        for i in categorias],
+                total=total,
+            )
             
         return result
+
 
     def get_by_id(self, categoria_id: int) -> CategoriaPublic:
         with CategoriaUnitOfWork(self._session) as uow:
             categoria = self._get_or_404(uow, categoria_id)
-            result = CategoriaPublic.model_validate(categoria)
+            result = CategoriaPublic(**categoria.model_dump(), activo=categoria.deleted_at is None)
 
         return result
+    
 
     def update(self, categoria_id: int, data: CategoriaUpdate) -> CategoriaPublic: 
         with CategoriaUnitOfWork(self._session) as uow:
@@ -102,37 +112,52 @@ class CategoriaService:
 
             categoria.updated_at = datetime.utcnow() 
             uow.categorias.add(categoria)
-            result = CategoriaPublic.model_validate(categoria)
+            result = CategoriaPublic(**categoria.model_dump(), activo=categoria.deleted_at is None)
 
         return result
 
 
     def soft_delete(self, categoria_id: int) -> None:
         with CategoriaUnitOfWork(self._session) as uow:
-            categoria = self._get_or_404(uow, categoria_id)
+            categoria = uow.categorias.get_by_id(categoria_id)
+
+            if not categoria:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"No se encotro una categoria con id:{categoria_id}",
+                )
+
             self._validate_no_active_children(categoria)
             
             if categoria.deleted_at:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"La categoria ya se encuentra desactivada",
+                    detail=f"La categoria con id:{categoria_id} ya se encuentra desactivada",
                 )
             
             categoria.deleted_at = datetime.utcnow()
             uow.categorias.add(categoria)
 
+
     def activar_categoria(self, categoria_id: int) -> None:
         with CategoriaUnitOfWork(self._session) as uow:
-            categoria = self._get_or_404(uow, categoria_id)
+            categoria = uow.categorias.get_by_id(categoria_id)
+
+            if not categoria:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"No se encotro una categoria con id:{categoria_id}",
+                )
             
             if not categoria.deleted_at:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"La categoria ya se encuentra activada",
+                    detail=f"La categoria con id:{categoria_id} ya se encuentra activada",
                 )
             
             categoria.deleted_at = None
             uow.categorias.add(categoria)
+
 
     def get_tree(self) -> List[CategoriaTreeRead]:
         with CategoriaUnitOfWork(self._session) as uow:

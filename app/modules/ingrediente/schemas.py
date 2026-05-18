@@ -1,5 +1,4 @@
 from typing import List, Optional
-
 from sqlmodel import Field, SQLModel
 
 class IngredienteBase(SQLModel):
@@ -12,6 +11,7 @@ class IngredienteCreate(IngredienteBase):
 
 class IngredientePublic(IngredienteBase):
     id: int
+    activo: bool
 
 class IngredienteUpdate(SQLModel):
     nombre: Optional[str] = None
