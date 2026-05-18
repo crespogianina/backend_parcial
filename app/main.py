@@ -11,7 +11,7 @@ from app.modules.usuarios.router import router as usuario_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        create_all_tables()
+        create_db_and_tables()
     except Exception:
         pass
     yield

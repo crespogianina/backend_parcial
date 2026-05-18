@@ -1,13 +1,13 @@
 from sqlmodel import Session, select
 
-from app.core.base_repository import BaseRepository
+from app.core.repository import BaseRepository
 from app.modules.usuarios.model import Usuario
 
 
 class UsuarioRepository(BaseRepository[Usuario]):
 
     def __init__(self, session: Session):
-        super().__init__(Usuario, session)
+        super().__init__(session, Usuario)
 
     def get_by_username(self, username: str) -> Usuario | None:
         return self.session.exec(

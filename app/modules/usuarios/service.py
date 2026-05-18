@@ -1,29 +1,38 @@
 from fastapi import HTTPException, status
+from sqlmodel import Session
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
-from app.core.uow import UnitOfWork
-from app.modules.usuarios.model import Usuario, UserCreate, Token, UserPublic
+from app.modules.usuarios.model import Usuario
+from app.modules.usuarios.schemas import UserCreate, Token, UserPublic
+from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork
 
 
 class UsuarioService:
 
     def __init__(self, session: Session):
-        self.session = session
+        self._session = session
 
 
+    def get_by_username(self, username: str) -> UserPublic | None:
+        with UsuarioUnitOfWork(self._session) as uow:
+            usuario = uow.usuarios.get_by_username(username)
+            return UserPublic.model_validate(usuario) 
+        
     ##########################################
 
     def register(self, user_in: UserCreate) -> UserPublic:
-        with CategoriaUnitOfWork(self._session) as uow:
-            usuarioExiste = uow.usuarios.get_by_username(usuario.username)
-            if usuarioExiste:
+        with UsuarioUnitOfWork(self._session) as uow:
+            usuario_existe = uow.usuarios.get_by_username(user_in.username)
+
+            if usuario_existe:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="El nombre de usuario ya está en uso",
                 )
-                
-            usuarioExiste = uow.usuarios.get_by_email(usuario.username)                
-            if usuarioExiste:
+
+            email_existe = uow.usuarios.get_by_email(user_in.email)
+
+            if email_existe:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="El email ya está registrado",
@@ -36,12 +45,13 @@ class UsuarioService:
                 hashed_password=hash_password(user_in.password),
                 role="user",
             )
-    
-            usuario = UserPublic.model_validate(uow.usuarios.add(usuario))
-            return usuario
+
+            usuario_creado = uow.usuarios.add(usuario)
+
+            return UserPublic.model_validate(usuario_creado)
 
     def authenticate(self, username: str, password: str) -> Token:
-        with CategoriaUnitOfWork(self._session) as uow:
+        with UsuarioUnitOfWork(self._session) as uow:
             user = uow.usuarios.get_by_username(username)
 
             if not user or not verify_password(password, user.hashed_password):
@@ -68,11 +78,11 @@ class UsuarioService:
             )
 
     def list_all(self) -> list[Usuario]:
-        with CategoriaUnitOfWork(self._session) as uow:
+        with UsuarioUnitOfWork(self._session) as uow:
             return uow.usuarios.get_all()
 
     def set_disabled(self, user_id: int, disabled: bool) -> UserPublic:
-        with CategoriaUnitOfWork(self._session) as uow:
+        with UsuarioUnitOfWork(self._session) as uow:
             user = uow.usuarios.get_by_id(user_id)
             
             if not user:
