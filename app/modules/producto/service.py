@@ -207,6 +207,26 @@ class ProductoService:
     def soft_delete(self, producto_id: int) -> None:
         with ProductoUnitOfWork(self._session) as uow:
             producto = self._get_or_404(uow, producto_id)
+
+            if producto.deleted_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"El producto ya se encuentra desactivado",
+                )
+            
+            producto.deleted_at = datetime.utcnow()
+            uow.productos.add(producto)
+    
+    def activar_producto(self, producto_id: int) -> None:
+        with ProductoUnitOfWork(self._session) as uow:
+            producto = self._get_or_404(uow, producto_id)
+            
+            if not producto.deleted_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"El producto ya se encuentra activado",
+                )
+            
             producto.deleted_at = datetime.utcnow()
             uow.productos.add(producto)
 

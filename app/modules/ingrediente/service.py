@@ -113,5 +113,26 @@ class IngredienteService:
         with IngredienteUnitOfWork(self._session) as uow:
             ingrediente = self._get_or_404(uow, ingrediente_id)
             self._validate_no_productos_asociados(ingrediente)
+
+            if ingrediente.deleted_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"El ingrediente ya se encuentra desactivado",
+                )
+
             ingrediente.deleted_at = datetime.utcnow()
+            uow.ingredientes.add(ingrediente)
+
+    def activar_ingrediente(self, ingrediente_id: int) -> None:
+        with IngredienteUnitOfWork(self._session) as uow:
+            ingrediente = self._get_or_404(uow, ingrediente_id)
+            self._validate_no_productos_asociados(ingrediente)
+
+            if not ingrediente.deleted_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"El ingrediente ya se encuentra activado",
+                )
+            
+            ingrediente.deleted_at = None
             uow.ingredientes.add(ingrediente)

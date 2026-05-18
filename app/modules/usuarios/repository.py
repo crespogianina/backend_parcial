@@ -10,11 +10,11 @@ class UsuarioRepository(BaseRepository[Usuario]):
         super().__init__(session, Usuario)
 
     def get_by_username(self, username: str) -> Usuario | None:
-        return self.session.exec(
-            select(Usuario).where(Usuario.username == username)
-        ).first()
+        statement = select(Usuario).where(Usuario.username == username) 
+        
+        return self.session.exec(statement).first()
 
     def get_by_email(self, email: str) -> Usuario | None:
-        return self.session.exec(
-            select(Usuario).where(Usuario.email == email)
-        ).first()
+        statement = select(Usuario).where(Usuario.email == email) 
+
+        return self.session.exec(statement).first()

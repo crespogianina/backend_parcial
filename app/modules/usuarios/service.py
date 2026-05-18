@@ -13,12 +13,11 @@ class UsuarioService:
         self._session = session
 
 
-    def get_by_username(self, username: str) -> UserPublic | None:
+    def get_by_username(self, username: str) -> Usuario | None:
         with UsuarioUnitOfWork(self._session) as uow:
-            usuario = uow.usuarios.get_by_username(username)
-            return UserPublic.model_validate(usuario) 
-        
-    ##########################################
+            usuario = uow.usuarios.get_by_username(username) 
+
+        return usuario 
 
     def register(self, user_in: UserCreate) -> UserPublic:
         with UsuarioUnitOfWork(self._session) as uow:
@@ -77,9 +76,13 @@ class UsuarioService:
                 expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             )
 
-    def list_all(self) -> list[Usuario]:
+    def list_all(self) -> list[UserPublic]:
         with UsuarioUnitOfWork(self._session) as uow:
-            return uow.usuarios.get_all()
+            usuarios = uow.usuarios.get_all()
+            result =[UserPublic.model_validate(u) for u in usuarios] 
+
+        return result
+
 
     def set_disabled(self, user_id: int, disabled: bool) -> UserPublic:
         with UsuarioUnitOfWork(self._session) as uow:
@@ -90,7 +93,17 @@ class UsuarioService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Usuario no encontrado",
                 )
+            
+            if user.disabled == disabled:
+                estado = "desactivado" if disabled else "activado"
+
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"El usuario ya se encuentra {estado}",
+                )
                 
             user.disabled = disabled
+            updated = uow.usuarios.add(user)
+            result = UserPublic.model_validate(updated) 
             
-            return uow.usuarios.add(user)
+        return result

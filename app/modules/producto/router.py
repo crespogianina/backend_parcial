@@ -35,7 +35,13 @@ def edit_producto(id: Annotated[int, Path(gt=0)], producto: ProductoUpdate, svc:
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar producto por id")
 def eliminar_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> None:
-    return svc.soft_delete(id)
+    svc.soft_delete(id)
+    return {"mensaje": f"Se elimino correctamente el producto con id {id}"} 
+
+@router.post("/{id}", status_code=status.HTTP_204_NO_CONTENT, summary="Activar producto por id")
+def activar_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service)) -> None:
+    svc.activar_producto(id)
+    return {"mensaje": f"Se activo correctamente el producto con id {id}"} 
 
 @router.get("/{id}/categorias", response_model=List[CategoriaPublic], status_code=status.HTTP_200_OK, summary="Obtener categorias de un producto")
 def obtener_categorias_producto(id: Annotated[int, Path(gt=0)], svc: ProductoService = Depends(get_producto_service))-> List[CategoriaPublic]:

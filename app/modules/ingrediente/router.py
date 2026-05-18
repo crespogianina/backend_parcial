@@ -39,7 +39,14 @@ def get_ingrediente_by_id(id: Annotated[int, Path(gt=0)], svc: IngredienteServic
 def edit_ingrediente(id: Annotated[int, Path(gt=0)], ingrediente: IngredienteUpdate, svc: IngredienteService = Depends(get_ingrediente_service)) -> IngredientePublic:
     return svc.update(id, ingrediente)
 
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar ingrediente por id")
-def eliminar_ingrediente(id: Annotated[int, Path(gt=0)], svc: IngredienteService = Depends(get_ingrediente_service)) -> None:
-    return svc.soft_delete(id)
+@router.delete("/{id}", status_code=status.HTTP_200_OK, summary="Eliminar ingrediente por id")
+def eliminar_ingrediente(id: Annotated[int, Path(gt=0)], svc: IngredienteService = Depends(get_ingrediente_service)) -> dict:
+    svc.soft_delete(id)
+    return {"mensaje": f"Se elimino correctamente el ingrediente con id {id}"} 
 
+@router.post("/{id}", status_code=status.HTTP_200_OK, summary="Activar ingrediente por id")
+def activar_ingrediente(id: Annotated[int, Path(gt=0)], svc: IngredienteService = Depends(get_ingrediente_service)) -> dict:
+    svc.activar_ingrediente(id)
+    return {"mensaje": f"Se activo correctamente el ingrediente con id {id}"} 
+
+ 

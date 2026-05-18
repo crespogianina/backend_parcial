@@ -112,9 +112,27 @@ class CategoriaService:
             categoria = self._get_or_404(uow, categoria_id)
             self._validate_no_active_children(categoria)
             
+            if categoria.deleted_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"La categoria ya se encuentra desactivada",
+                )
+            
             categoria.deleted_at = datetime.utcnow()
             uow.categorias.add(categoria)
 
+    def activar_categoria(self, categoria_id: int) -> None:
+        with CategoriaUnitOfWork(self._session) as uow:
+            categoria = self._get_or_404(uow, categoria_id)
+            
+            if not categoria.deleted_at:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"La categoria ya se encuentra activada",
+                )
+            
+            categoria.deleted_at = None
+            uow.categorias.add(categoria)
 
     def get_tree(self) -> List[CategoriaTreeRead]:
         with CategoriaUnitOfWork(self._session) as uow:

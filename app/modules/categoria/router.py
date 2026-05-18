@@ -36,7 +36,14 @@ def get_categoria_por_id(id: Annotated[int, Path(gt=0)], svc: CategoriaService =
 def edit_categoria(id: Annotated[int, Path(gt=0)], categoria: CategoriaUpdate, svc: CategoriaService = Depends(get_categoria_service)) -> CategoriaPublic:
     return svc.update(id, categoria)
 
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar categoria por id")
-def eliminar_categoria(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> None:
-    return svc.soft_delete(id)
+@router.delete("/{id}", status_code=status.HTTP_200_OK, response_model=dict, summary="Eliminar categoria por id")
+def eliminar_categoria(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> dict:
+    svc.soft_delete(id)
+    return {"mensaje": f"Se elimino correctamente la categoria con id {id}"} 
+
+# consultar 
+@router.post("/{id}/activar", status_code=status.HTTP_200_OK, response_model=dict, summary="Activar categoria por id")
+def activar_categoria(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> dict:
+    svc.activar_categoria(id)
+    return {"mensaje": f"Se activo correctamente la categoria con id {id}"} 
 
