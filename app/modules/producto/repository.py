@@ -1,5 +1,4 @@
 from typing import List, Optional
-
 from sqlalchemy import Select
 from sqlmodel import Session, func, select
 from app.core.repository import BaseRepository

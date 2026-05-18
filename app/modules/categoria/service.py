@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import List, Optional
-
 from fastapi import HTTPException, status
 from sqlmodel import Session
 from .unit_of_work import CategoriaUnitOfWork

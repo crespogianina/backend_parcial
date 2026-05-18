@@ -19,6 +19,7 @@ class UsuarioService:
 
         return usuario 
 
+
     def register(self, user_in: UserCreate) -> UserPublic:
         with UsuarioUnitOfWork(self._session) as uow:
             usuario_existe = uow.usuarios.get_by_username(user_in.username)
@@ -49,6 +50,7 @@ class UsuarioService:
 
             return UserPublic.model_validate(usuario_creado)
 
+
     def authenticate(self, username: str, password: str) -> Token:
         with UsuarioUnitOfWork(self._session) as uow:
             user = uow.usuarios.get_by_username(username)
@@ -75,6 +77,7 @@ class UsuarioService:
                 token_type="bearer",
                 expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             )
+
 
     def list_all(self) -> list[UserPublic]:
         with UsuarioUnitOfWork(self._session) as uow:

@@ -1,10 +1,7 @@
-# app/modules/productos/service.py
 from datetime import datetime
 from typing import List, Optional
-
 from fastapi import HTTPException, status
 from sqlmodel import Session
-
 from .models import Producto, ProductoCategoria, ProductoIngrediente
 from .schemas import ProductoCreate, ProductoPublic, ProductoUpdate, ProductoList
 from app.modules.categoria.schemas import CategoriaPublic
@@ -35,12 +32,14 @@ class ProductoService:
             
         return producto
 
+
     def _assert_nombre_unique(self, uow: ProductoUnitOfWork, nombre: str) -> None:
         if uow.productos.get_by_nombre(nombre):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"El nombre '{nombre}' ya está en uso",
             )
+
 
     def _validate_no_duplicate_ids(self, ids: list[int], entity_name: str) -> None:
         duplicated_ids = {item_id for item_id in ids if ids.count(item_id) > 1}
@@ -51,6 +50,7 @@ class ProductoService:
                 detail=f"No se permiten {entity_name} duplicados: {list(duplicated_ids)}"
             )
 
+
     def _validar_categorias_existen(self, uow: ProductoUnitOfWork, categorias: list[int]) -> None:
         for cat in categorias:
                 categoria = uow.categorias.get_by_id(cat)
@@ -60,6 +60,7 @@ class ProductoService:
                         detail=f"Categoria {cat} no encontrada",
                     )
 
+
     def _validar_ingredientes_existen(self, uow: ProductoUnitOfWork, ingredientes: List[int]) -> None:
         for ing in ingredientes:
             ingrediente = uow.ingredientes.get_by_id(ing)
@@ -68,6 +69,7 @@ class ProductoService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Ingrediente {ing} no encontrado",
                 )
+
 
     def _reemplazar_categorias(self, uow: ProductoUnitOfWork, producto_id: int, categoria_ids: list[int]) -> None:
         uow.productos.delete_categorias_by_producto(producto_id)

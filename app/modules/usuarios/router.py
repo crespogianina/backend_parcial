@@ -1,9 +1,7 @@
 from typing import Annotated
-
 from fastapi import APIRouter, Depends, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
-
 from app.core.database import get_session
 from app.core.deps import get_current_active_user, require_role
 from app.modules.usuarios.schemas import UserCreate, UserPublic

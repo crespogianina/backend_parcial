@@ -1,14 +1,14 @@
 
 from typing import Annotated, List, Optional
-
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
-
 from app.core.database import get_session
+from app.core.deps import get_current_active_user, require_role
 from app.modules.categoria.schemas import CategoriaCreate, CategoriaPublic, CategoriaTreeRead, CategoriaUpdate, CategoriaList
 from app.modules.categoria.service import CategoriaService
+from app.modules.usuarios.schemas import UserPublic
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_active_user)])
 
 def get_categoria_service(session: Session = Depends(get_session)) -> CategoriaService:
     return CategoriaService(session)
@@ -16,7 +16,11 @@ def get_categoria_service(session: Session = Depends(get_session)) -> CategoriaS
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/", response_model=CategoriaPublic, status_code=status.HTTP_201_CREATED, summary="Crear una categoria")
-def create_categoria(data: CategoriaCreate, svc: CategoriaService = Depends(get_categoria_service)) -> CategoriaPublic:
+def create_categoria(
+    data: CategoriaCreate, 
+    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    svc: CategoriaService = Depends(get_categoria_service)
+) -> CategoriaPublic:
     return svc.create(data)
 
 
@@ -42,19 +46,32 @@ def get_categoria_por_id(id: Annotated[int, Path(gt=0)], svc: CategoriaService =
 
 
 @router.put("/{id}", response_model=CategoriaPublic, status_code=status.HTTP_200_OK, summary="Editar categoria por id")
-def edit_categoria(id: Annotated[int, Path(gt=0)], categoria: CategoriaUpdate, svc: CategoriaService = Depends(get_categoria_service)) -> CategoriaPublic:
+def edit_categoria(
+    id: Annotated[int, Path(gt=0)], 
+    categoria: CategoriaUpdate,
+    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    svc: CategoriaService = Depends(get_categoria_service)
+) -> CategoriaPublic:
     return svc.update(id, categoria)
 
 
 @router.delete("/{id}", status_code=status.HTTP_200_OK, response_model=dict, summary="Eliminar categoria por id")
-def eliminar_categoria(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> dict:
+def eliminar_categoria(
+    id: Annotated[int, Path(gt=0)],
+    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    svc: CategoriaService = Depends(get_categoria_service)
+) -> dict:
     svc.soft_delete(id)
     return {"mensaje": f"Se elimino correctamente la categoria con id {id}"} 
 
 
 # consultar 
 @router.post("/{id}/activar", status_code=status.HTTP_200_OK, response_model=dict, summary="Activar categoria por id")
-def activar_categoria(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> dict:
+def activar_categoria(
+    id: Annotated[int, Path(gt=0)],
+    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))],
+    svc: CategoriaService = Depends(get_categoria_service)
+) -> dict:
     svc.activar_categoria(id)
     return {"mensaje": f"Se activo correctamente la categoria con id {id}"} 
 
