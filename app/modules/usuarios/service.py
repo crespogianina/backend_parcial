@@ -13,11 +13,14 @@ class UsuarioService:
         self._session = session
 
 
-    def get_by_username(self, username: str) -> Usuario | None:
+    def get_by_username(self, username: str) -> UserPublic | None:
         with UsuarioUnitOfWork(self._session) as uow:
-            usuario = uow.usuarios.get_by_username(username) 
+            usuario = uow.usuarios.get_by_username(username)
 
-        return usuario 
+            if usuario is None:
+                return None
+
+            return UserPublic.model_validate(usuario)
 
 
     def register(self, user_in: UserCreate) -> UserPublic:

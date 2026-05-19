@@ -20,7 +20,10 @@ def register(user_in: UserCreate, svc: UsuarioService = Depends(get_usuario_serv
 
 
 @router.post("/token")
-def login( form_data: Annotated[OAuth2PasswordRequestForm, Depends()], response: Response, svc: UsuarioService = Depends(get_usuario_service)) -> dict:
+def login( 
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    response: Response, svc: UsuarioService = Depends(get_usuario_service)
+) -> dict:
     token = svc.authenticate(form_data.username, form_data.password)
 
     response.set_cookie(

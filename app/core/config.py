@@ -7,11 +7,13 @@ class Settings(BaseSettings):
     postgres_host: str
     postgres_port: int
     postgres_db: str
+    postgres_db: str
 
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
         return (
+            # f"{postgres_db}"
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
