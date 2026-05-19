@@ -3,7 +3,6 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import ARRAY, Column, Numeric, Relationship, SQLModel, Field, String
-
 if TYPE_CHECKING:
     from app.modules.categoria.models import Categoria
     from app.modules.ingrediente.models import Ingrediente
@@ -19,6 +18,7 @@ class ProductoCategoria(SQLModel, table=True):
     producto: Optional["Producto"] = Relationship(back_populates="producto_categorias")
     categoria: Optional["Categoria"] = Relationship(back_populates="producto_categorias")
 
+
 class ProductoIngrediente(SQLModel, table=True):
     __tablename__ = "producto_ingrediente"
 
@@ -29,6 +29,7 @@ class ProductoIngrediente(SQLModel, table=True):
     
     producto: Optional["Producto"] = Relationship(back_populates="producto_ingredientes")
     ingrediente: Optional["Ingrediente"] = Relationship(back_populates="producto_ingredientes")
+
 
 class Producto(SQLModel, table=True):
     __tablename__ = "productos"
