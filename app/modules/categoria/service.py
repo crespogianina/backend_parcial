@@ -126,13 +126,13 @@ class CategoriaService:
                     detail=f"No se encotro una categoria con id:{categoria_id}",
                 )
 
-            self._validate_no_active_children(categoria)
-            
             if categoria.deleted_at:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"La categoria con id:{categoria_id} ya se encuentra desactivada",
                 )
+                
+            self._validate_no_active_children(categoria)
             
             categoria.deleted_at = datetime.utcnow()
             uow.categorias.add(categoria)
