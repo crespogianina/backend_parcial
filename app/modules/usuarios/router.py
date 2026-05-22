@@ -57,21 +57,21 @@ def read_me(current_user: Annotated[UserPublic, Depends(get_current_active_user)
 @router.get("/privado")
 def ruta_privada(current_user: Annotated[UserPublic, Depends(get_current_active_user)]) -> dict:
     return {
-        "mensaje": f"¡Hola, {current_user.full_name}! Accediste a una ruta privada.",
-        "tu_rol": current_user.role,
+        "mensaje": f"¡Hola, {current_user.nombre}! Accediste a una ruta privada.",
+        "tus_roles": current_user.roles,
     }
 
 
 @router.get("/admin/usuarios", response_model=list[UserPublic])
-def list_users( _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], svc: UsuarioService = Depends(get_usuario_service)) -> list[UserPublic]:
+def list_users( _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: UsuarioService = Depends(get_usuario_service)) -> list[UserPublic]:
     return svc.list_all()
 
 
 @router.post("/admin/usuarios/{user_id}/desactivar", response_model=UserPublic)
-def deactivate_user( user_id: int, _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], svc: UsuarioService = Depends(get_usuario_service)) -> UserPublic:
+def deactivate_user( user_id: int, _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: UsuarioService = Depends(get_usuario_service)) -> UserPublic:
     return svc.set_disabled(user_id, disabled=True)
 
 
 @router.post("/admin/usuarios/{user_id}/activar", response_model=UserPublic)
-def activate_user( user_id: int, _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], svc: UsuarioService = Depends(get_usuario_service)) -> UserPublic:
+def activate_user( user_id: int, _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: UsuarioService = Depends(get_usuario_service)) -> UserPublic:
     return svc.set_disabled(user_id, disabled=False)

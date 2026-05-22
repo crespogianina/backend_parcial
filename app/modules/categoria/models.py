@@ -15,6 +15,7 @@ class Categoria(SQLModel, table=True):
     nombre: str = Field(min_length=2, max_length=100, index=True, nullable=False, unique=True)
     descripcion: Optional[str] = Field(default=None)
     imagen_url: Optional[str] = Field(default=None)
+    
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     deleted_at: Optional[datetime] = None

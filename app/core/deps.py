@@ -54,6 +54,7 @@ async def get_current_user(
 
     user = svc.get_by_username(username)
 
+    print(user)
     if user is None:
         raise credentials_exception
 
@@ -61,7 +62,7 @@ async def get_current_user(
 
 
 async def get_current_active_user( current_user: Annotated[Usuario, Depends(get_current_user)]) -> UserPublic:
-    if current_user.disabled:
+    if current_user.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cuenta de usuario desactivada",
@@ -72,11 +73,11 @@ async def get_current_active_user( current_user: Annotated[Usuario, Depends(get_
 
 def require_role(allowed_roles: list[str]):
     async def role_checker( current_user: Annotated[Usuario, Depends(get_current_active_user)]) -> UserPublic:
-        if current_user.role not in allowed_roles:
+        if not any(role in allowed_roles for role in current_user.roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
-                    f"Permisos insuficientes. Tu rol es '{current_user.role}'. "
+                    f"Permisos insuficientes. Tus roles son '{current_user.roles}'. "
                     f"Se requiere uno de: {allowed_roles}"
                 ),
             )
