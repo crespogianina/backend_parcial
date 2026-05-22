@@ -54,6 +54,7 @@ class UsuarioService:
             )
 
             result = uow.usuarios.add(usuario)
+            
             return UserPublic(**result.model_dump(), roles=[ur.rol_codigo for ur in result.usuario_roles])
 
 
