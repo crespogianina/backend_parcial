@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Optional, Text
 from pydantic import Field
 from sqlalchemy import BigInteger, Column, ForeignKey, Numeric, String
-from sqlmodel import PrimaryKeyConstraint, SQLModel
+from sqlmodel import Index, SQLModel
 
 
 class EstadoPedido(SQLModel, table=True):
@@ -20,7 +20,7 @@ class EstadoPedido(SQLModel, table=True):
 class DetallePedido(SQLModel, table=True):
     __tablename__ = "detalles_pedido"
 
-    __table_args__ = (PrimaryKeyConstraint("pedido_id", "producto_id"),)
+    __table_args__ = (Index("pedidos.id", "productos.id"))
 
     pedido_id: int = Field(sa_column=Column(BigInteger, ForeignKey("pedidos.id"), nullable=False))
     producto_id: int = Field(sa_column=Column(BigInteger, ForeignKey("productos.id"), nullable=False))
@@ -30,7 +30,7 @@ class DetallePedido(SQLModel, table=True):
     nombre_snapshot: str = Field(nullable=False, max_length=200)
     pecio_snapshot: float = Field(nullable=False, sa_column=Column(Numeric(10, 2)))
     subtotal_snap: float = Field(nullable=False, sa_column=Column(Numeric(10, 2)))
-    personalizacion: int = Field(max_length=200) #consultar
+    personalizacion: int = Field(max_length=200)
     
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
    
@@ -48,7 +48,6 @@ class HistorialPedido(SQLModel, table=True):
     motivo: str = Field(default=None)
     
     timestamp: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-
 
 
 class Pedido(SQLModel, table=True):
@@ -73,20 +72,10 @@ class Pedido(SQLModel, table=True):
     deleted_at: Optional[datetime] = Field(default=None) 
 
 
-
 class FormaPago(SQLModel, table=True):
     __tablename__ = "formas_pago"
 
     codigo: str = Field(max_length=20, primary_key=True)
     
     descripcion: str = Field(nullable=False, max_length=80)
-    habilitado: bool = Field(nullable=False, default=True) 
-
-
-# class Pago(SQLModel, table=True):
-#     __tablename__ = "pagos"
-
-#     id: int = Field(primary_key=True)
-
-#     pedido_id: int = Field(sa_column=Column( BigInteger, ForeignKey("pedidos.id"), nullable=False))
-    
+    habilitado: bool = Field(nullable=False, default=True)

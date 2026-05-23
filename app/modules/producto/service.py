@@ -112,7 +112,6 @@ class ProductoService:
                 self._validar_ingredientes_existen(uow, ingrediente_ids)
 
             self._assert_nombre_unique(uow, data.nombre)
-
             producto = Producto.model_validate(data.model_dump(exclude={"categorias", "ingredientes"}))
             uow.productos.add(producto)
             self._session.flush()  
