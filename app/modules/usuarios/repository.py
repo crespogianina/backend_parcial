@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 from app.core.repository import BaseRepository
-from app.modules.usuarios.model import Usuario
+from app.modules.usuarios.model import Usuario, UsuarioRol
 
 
 class UsuarioRepository(BaseRepository[Usuario]):
@@ -17,3 +17,9 @@ class UsuarioRepository(BaseRepository[Usuario]):
         statement = select(Usuario).where(Usuario.email == email) 
 
         return self.session.exec(statement).first()
+
+    def add_rol(self, usuario_rol: UsuarioRol) -> UsuarioRol:
+        self.session.add(usuario_rol)
+        self.session.flush()
+        
+        return usuario_rol

@@ -1,50 +1,44 @@
-
-from zipfile import Path
-
-from typing_extensions import Annotated
+# app/modules/pedido/router.py
 
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
 from app.core.database import get_session
 from app.core.deps import get_current_active_user
-from app.modules.pedido.schemas import PedidoCreate, PedidoRead, PedidoDetail, DetallePedidoRead
+from app.modules.pedido.schemas import PedidoCreate, PedidoDetail
 from app.modules.pedido.service import PedidoService
+from app.modules.pedido.unit_of_work import PedidoUnitOfWork
+from app.modules.producto.service import ProductoService
+from app.modules.usuarios.schemas import UserPublic
+
+router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 
 
-router = APIRouter(dependencies=[Depends(get_current_active_user)])
+# ── Dependencias ──────────────────────────────────────────────────────────────
+
+def get_producto_service(
+    session: Session = Depends(get_session),
+) -> ProductoService:
+    return ProductoService(session)
 
 
-def get_pedido_service(session: Session = Depends(get_session)) -> PedidoService:
-    return PedidoService(session)
+def get_pedido_service(
+    session: Session = Depends(get_session),
+    producto_service: ProductoService = Depends(get_producto_service),
+) -> PedidoService:
+    return PedidoService(PedidoUnitOfWork(session), producto_service)
 
 
-# Endpoints
-@router.post("/", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def register(pedido_in: PedidoCreate, svc: PedidoService = Depends(get_pedido_service)) -> PedidoRead:
-    return svc.register(pedido_in)
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
-
-@router.get("/", response_model=list[PedidoRead], status_code=status.HTTP_201_CREATED)
-def list_pedidos( svc: PedidoService = Depends(get_pedido_service)) -> list[PedidoRead]:
-    return svc.get_pedido()
-
-
-@router.get("/{id}", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def get_pedido(id: Annotated[int, Path(gt=0)], svc: PedidoService = Depends(get_pedido_service)) -> PedidoRead:
-    return svc.get_pedido_id(id)
-
-
-@router.put("/{id}", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def update_pedido(id: Annotated[int, Path(gt=0)], pedido_in: PedidoCreate, svc: PedidoService = Depends(get_pedido_service)) -> PedidoRead:
-    return svc.update_pedido(id, pedido_in)
-
-
-@router.patch("/{id}", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def update_pedido(id: Annotated[int, Path(gt=0)], pedido_in: PedidoCreate, svc: PedidoService = Depends(get_pedido_service)) -> PedidoRead:
-    return svc.update_pedido(id, pedido_in)
-
-
-@router.delete("/{id}", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def delete_pedido(id: Annotated[int, Path(gt=0)], svc: PedidoService = Depends(get_pedido_service)) -> PedidoRead:
-    return svc.delete_pedido(id)
+@router.post(
+    "/",
+    response_model=PedidoDetail,
+    status_code=status.HTTP_201_CREATED,
+)
+def crear_pedido(
+    data: PedidoCreate,
+    usuario: UserPublic = Depends(get_current_active_user),
+    service: PedidoService = Depends(get_pedido_service),
+) -> PedidoDetail:
+    return service.crear_pedido(usuario.id, data)

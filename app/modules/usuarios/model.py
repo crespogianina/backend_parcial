@@ -1,10 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
-
-from sqlalchemy import BigInteger, CHAR, Numeric, ForeignKey, String, Text, Index
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Text
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, PrimaryKeyConstraint
 
+
+
+if TYPE_CHECKING:
+    from app.modules.pedido.models import Pedido, HistorialEstadoPedido
+    from app.modules.direcciones.model import DireccionEntrega
 
 class Rol(SQLModel, table=True):
     __tablename__ = "roles"
@@ -19,10 +23,7 @@ class Rol(SQLModel, table=True):
 class Usuario(SQLModel, table=True):
     __tablename__ = "usuarios"
 
-    id: Optional[int] = Field(
-        default=None,
-        sa_column=Column(BigInteger, primary_key=True, autoincrement=True)
-    )
+    id: Optional[int] = Field(default=None, primary_key=True)
 
     nombre: str = Field(nullable=False, max_length=80)
     apellido: str = Field(nullable=False, max_length=80)
@@ -31,12 +32,12 @@ class Usuario(SQLModel, table=True):
     celular: Optional[str] = Field(default=None, max_length=20)
     password_hash: str = Field(sa_column=Column(CHAR(60), nullable=False))
 
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     deleted_at: Optional[datetime] = Field(default=None)
 
     direcciones: list["DireccionEntrega"] = Relationship(back_populates="usuario")
-
     usuario_roles: list["UsuarioRol"] = Relationship(
         back_populates="usuario",
         sa_relationship_kwargs={
@@ -44,34 +45,8 @@ class Usuario(SQLModel, table=True):
             "foreign_keys": "[UsuarioRol.usuario_id]",
         }
     )
-
-
-class DireccionEntrega(SQLModel, table=True):
-    __tablename__ = "direcciones_entrega"
-
-    __table_args__ = (Index("ix_direcciones_entrega_usuario_id", "usuario_id"))
-
-    id: Optional[int] = Field( default=None, sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
-
-    usuario_id: int = Field(sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=False))
-
-    alias: Optional[str] = Field(default=None, max_length=50)
-    linea1: str = Field(nullable=False)
-    linea2: Optional[str] = Field(default=None)
-    ciudad: str = Field(nullable=False, max_length=100)
-    provincia: Optional[str] = Field(default=None, max_length=100)
-    codigo_postal: Optional[str] = Field(default=None, max_length=10)
-
-    latitud: Optional[float] = Field(default=None, sa_column=Column(Numeric(9, 6)))
-    longitud: Optional[float] = Field(default=None, sa_column=Column(Numeric(9, 6)))
-
-    es_principal: bool = Field(default=False, nullable=False)
-
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    deleted_at: Optional[datetime] = Field(default=None)
-
-    usuario: Optional["Usuario"] = Relationship(back_populates="direcciones")
+    pedidos: list["Pedido"] = Relationship(back_populates="usuario") 
+    historial_pedidos: list["HistorialEstadoPedido"] = Relationship(back_populates="usuario") 
 
 
 class UsuarioRol(SQLModel, table=True):
@@ -85,7 +60,7 @@ class UsuarioRol(SQLModel, table=True):
     asignado_por_id: Optional[int] = Field( default=None, sa_column=Column(BigInteger, ForeignKey("usuarios.id")))
     expires_at: Optional[datetime] = Field(default=None)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
     usuario: Optional["Usuario"] = Relationship(
         back_populates="usuario_roles",

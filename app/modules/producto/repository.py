@@ -41,6 +41,17 @@ class ProductoRepository(BaseRepository[Producto]):
         return self.session.exec(statement).first()
 
 
+    def get_with_lock(self, producto_id: int) -> Producto | None:
+        statement = (
+            select(Producto)
+            .where(Producto.id == producto_id)
+            .where(Producto.deleted_at.is_(None))
+            .with_for_update()
+        )
+        
+        return self.session.exec(statement).first()
+
+
     def get_all_productos(
             self,
             nombre: Optional[str] = None, 
@@ -109,3 +120,4 @@ class ProductoRepository(BaseRepository[Producto]):
             self.session.delete(link)
 
         self.session.flush()
+
