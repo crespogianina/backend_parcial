@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from app.modules.usuarios.model import Usuario
 
 class EstadoPedido(SQLModel, table=True):
-    __tablename__ = "estados_pedido"
+    __tablename__ = "estado_pedido"
 
     codigo: str = Field(sa_column=Column(String(20), primary_key=True))
 
@@ -54,7 +54,7 @@ class Pedido(SQLModel, table=True):
 
     usuario_id: int = Field(sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=False))
     direccion_id: Optional[int] = Field(default=None, sa_column=Column( BigInteger, ForeignKey("direcciones_entrega.id"), nullable=True))
-    estado_codigo: str = Field(sa_column=Column(String(20), ForeignKey("estados_pedido.codigo"), nullable=False))
+    estado_codigo: str = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=False))
     forma_pago_codigo: str = Field(sa_column=Column(String(20), ForeignKey("formas_pago.codigo"), nullable=False))
     
     subtotal: Decimal = Field(sa_column=Column( Numeric(10, 2), nullable=False))
@@ -126,8 +126,8 @@ class HistorialEstadoPedido(SQLModel, table=True):
     id: Optional[int] = Field(default=None,sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
 
     pedido_id: int = Field(sa_column=Column(BigInteger, ForeignKey("pedidos.id"), nullable=False))
-    estado_desde: str = Field(sa_column=Column(String(20), ForeignKey("estados_pedido.codigo"), nullable=False))
-    estado_hacia: Optional[str] = Field(sa_column=Column(String(20), ForeignKey("estados_pedido.codigo"), nullable=True))
+    estado_desde: str = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=False))
+    estado_hacia: Optional[str] = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=True))
 
     usuario_id: int = Field(sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=False))
 

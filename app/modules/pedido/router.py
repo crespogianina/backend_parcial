@@ -13,8 +13,6 @@ from app.modules.pedido.schemas import (
     PedidoListResponse,
 )
 from app.modules.pedido.service import PedidoService
-from app.modules.pedido.unit_of_work import PedidoUnitOfWork
-from app.modules.producto.service import ProductoService
 from app.modules.usuarios.schemas import UserPublic
 
 router = APIRouter(prefix="/pedidos", tags=["pedidos"])
@@ -22,17 +20,8 @@ router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 
 # ── Dependencias ──────────────────────────────────────────────────────────────
 
-def get_producto_service(
-    session: Session = Depends(get_session),
-) -> ProductoService:
-    return ProductoService(session)
-
-
-def get_pedido_service(
-    session: Session = Depends(get_session),
-    producto_service: ProductoService = Depends(get_producto_service),
-) -> PedidoService:
-    return PedidoService(PedidoUnitOfWork(session), producto_service)
+def get_pedido_service(session: Session = Depends(get_session)) -> PedidoService:
+    return PedidoService(session)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -51,29 +40,29 @@ def crear_pedido(
     return service.crear_pedido(usuario.id, data)
 
 
-# @router.get(
-#     "/",
-#     response_model=PedidoListResponse,
-#     status_code=status.HTTP_200_OK,
-#     summary="Listar pedidos",
-# )
-# def obtener_pedidos(
-#     usuario: UserPublic = Depends(get_current_active_user),
-#     service: PedidoService = Depends(get_pedido_service),
-#     estado: Annotated[Optional[str], Query()] = None,
-#     fecha_desde: Annotated[Optional[date], Query()] = None,
-#     fecha_hasta: Annotated[Optional[date], Query()] = None,
-#     offset: Annotated[int, Query(ge=0)] = 0,
-#     limit: Annotated[int, Query(ge=1, le=50)] = 50,
-# ) -> PedidoListResponse:
-#     return service.obtener_pedidos(
-#         usuario=usuario,
-#         estado=estado,
-#         fecha_desde=fecha_desde,
-#         fecha_hasta=fecha_hasta,
-#         offset=offset,
-#         limit=limit,
-#     )
+@router.get(
+    "/",
+    response_model=PedidoListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Listar pedidos",
+)
+def obtener_pedidos(
+    usuario: UserPublic = Depends(get_current_active_user),
+    service: PedidoService = Depends(get_pedido_service),
+    estado: Annotated[Optional[str], Query()] = None,
+    fecha_desde: Annotated[Optional[date], Query()] = None,
+    fecha_hasta: Annotated[Optional[date], Query()] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 50,
+) -> PedidoListResponse:
+    return service.obtener_pedidos(
+        usuario=usuario,
+        estado=estado,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        offset=offset,
+        limit=limit,
+    )
 
 
 # @router.get(

@@ -42,8 +42,8 @@ class ProductoCreate(ProductoBase):
 class ProductoPublic(ProductoBase):
     id: int
     activo: bool
-    categorias: List[CategoriaProductoRead]
-    ingredientes: List[IngredienteProductoRead]
+    # categorias: List[CategoriaProductoRead]
+    # ingredientes: List[IngredienteProductoRead]
 
 
 class ProductoUpdate(SQLModel):

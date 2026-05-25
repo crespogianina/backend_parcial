@@ -170,7 +170,7 @@ class ProductoService:
                 print(pc.categoria)          
 
 
-            result = ProductoPublic(producto.model_dump, activo = producto.deleted_at is None)
+            result = ProductoPublic(**producto.model_dump(), activo=producto.deleted_at is None)
 
         return result
 

@@ -61,6 +61,7 @@ class IngredienteService:
         return result
 
 
+
     def get_all(self, es_alergeno: bool, nombre: Optional[str] = None, descripcion: Optional[str] = None, offset: int = 0, limit: int = 20) -> IngredienteList:
         with IngredienteUnitOfWork(self._session) as uow:
             ingredientes = uow.ingredientes.get_all_ingredientes(nombre, descripcion, es_alergeno, offset=offset, limit=limit)
