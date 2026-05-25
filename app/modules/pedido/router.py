@@ -65,45 +65,45 @@ def obtener_pedidos(
     )
 
 
-# @router.get(
-#     "/{id}",
-#     response_model=PedidoDetail,
-#     status_code=status.HTTP_200_OK,
-#     summary="Obtener pedido por id",
-# )
-# def obtener_pedido_id(
-#     id: Annotated[int, Path(gt=0)],
-#     usuario: UserPublic = Depends(get_current_active_user), 
-#     service: PedidoService = Depends(get_pedido_service),
-# ) -> PedidoDetail:
-#     return service.obtener_pedido(id, usuario)   
+@router.get(
+    "/{id}",
+    response_model=PedidoDetail,
+    status_code=status.HTTP_200_OK,
+    summary="Obtener pedido por id",
+)
+def obtener_pedido_id(
+    id: Annotated[int, Path(gt=0)],
+    usuario: UserPublic = Depends(get_current_active_user), 
+    service: PedidoService = Depends(get_pedido_service),
+) -> PedidoDetail:
+    return service.obtener_pedido(id, usuario)   
 
 
-# @router.patch(
-#     "/{id}/avanzar",
-#     response_model=PedidoDetail,
-#     status_code=status.HTTP_200_OK,
-#     summary="Avanzar pedido",
-# )
-# def avanzar_pedido(
-#     id: Annotated[int, Path(gt=0)],
-#     observacion: Annotated[Optional[str], Body(embed=True)] = None,
-#     usuario: UserPublic = Depends(get_current_active_user),
-#     service: PedidoService = Depends(get_pedido_service),
-# ) -> PedidoDetail:
-#     return service.avanzar_pedido(id, observacion, usuario)   
+@router.patch(
+    "/{id}/avanzar",
+    response_model=PedidoDetail,
+    status_code=status.HTTP_200_OK,
+    summary="Avanzar pedido",
+)
+def avanzar_pedido(
+    id: Annotated[int, Path(gt=0)],
+    observacion: Annotated[Optional[str], Body(embed=True)] = None,
+    usuario: UserPublic = Depends(get_current_active_user),
+    service: PedidoService = Depends(get_pedido_service),
+) -> PedidoDetail:
+    return service.avanzar_pedido(id, observacion, usuario)   
 
 
-# @router.patch(
-#     "/{id}/cancelar",
-#     response_model=PedidoDetail,
-#     status_code=status.HTTP_200_OK,
-#     summary="Cancelar pedido",
-# )
-# def cancelar_pedido(
-#     id: Annotated[int, Path(gt=0)],
-#     observacion: Annotated[Optional[str], Body(embed=True)] = None,
-#     usuario: UserPublic = Depends(get_current_active_user),
-#     service: PedidoService = Depends(get_pedido_service),
-# ) -> PedidoDetail:
-#     return service.cancelar_pedido(id, observacion, usuario)
+@router.patch(
+    "/{id}/cancelar",
+    response_model=PedidoDetail,
+    status_code=status.HTTP_200_OK,
+    summary="Cancelar pedido",
+)
+def cancelar_pedido(
+    id: Annotated[int, Path(gt=0)],
+    observacion: Annotated[Optional[str], Body(embed=True)] = None,
+    usuario: UserPublic = Depends(get_current_active_user),
+    service: PedidoService = Depends(get_pedido_service),
+) -> PedidoDetail:
+    return service.cancelar_pedido(id, observacion, usuario)

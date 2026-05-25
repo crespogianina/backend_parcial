@@ -2,7 +2,6 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, Field
-from sqlmodel import SQLModel
 
 
 class ItemPedidoRequest(BaseModel):
@@ -11,7 +10,6 @@ class ItemPedidoRequest(BaseModel):
     personalizacion: list[int] = Field(default_factory=list)
 
 
-# ── Single definition of DireccionSnapshot ───────────────────────────────────
 class DireccionSnapshot(BaseModel):
     alias:          Optional[str] = None
     ciudad:         str
@@ -23,7 +21,6 @@ class DireccionSnapshot(BaseModel):
     longitud:       Optional[float] = None
 
 
-# ── Resumen schemas — field names must match the ORM models ──────────────────
 class UsuarioResumen(BaseModel):
     id: int
     nombre: str
@@ -35,27 +32,27 @@ class UsuarioResumen(BaseModel):
 
 class DireccionResumen(BaseModel):
     id: int
-    linea1: str          # match DireccionEntrega column name
+    linea1: str          
     ciudad: str
 
     model_config = {"from_attributes": True}
 
 
 class EstadoResumen(BaseModel):
-    codigo: str          # EstadoPedido PK is "codigo", not "id"
-    descripcion: str     # EstadoPedido has "descripcion", not "nombre"
+    codigo: str          
+    descripcion: str    
 
     model_config = {"from_attributes": True}
 
 
 class FormaPagoResumen(BaseModel):
-    codigo: str          # FormaPago PK is "codigo", not "id"
-    descripcion: str     # FormaPago has "descripcion", not "nombre"
+    codigo: str          
+    descripcion: str    
 
     model_config = {"from_attributes": True}
 
 
-# ── Request / create schemas ──────────────────────────────────────────────────
+
 class PedidoCreate(BaseModel):
     items: list[ItemPedidoRequest] = Field(min_length=1)
     direccion_id: int
@@ -67,7 +64,6 @@ class AvanzarEstadoRequest(BaseModel):
     observacion: str | None = None
 
 
-# ── Read schemas ──────────────────────────────────────────────────────────────
 class PagoRead(BaseModel):
     id: int
     monto: Decimal
@@ -87,10 +83,10 @@ class DetallePedidoCreate(BaseModel):
 
 class DetallePedidoRead(BaseModel):
     producto_id: int
-    nombre_snapshot: str   # matches DetallePedido.nombre_snapshot
+    nombre_snapshot: str   
     cantidad: int
     precio_snapshot: Decimal
-    subtotal_snap: Decimal  # matches DetallePedido.subtotal_snap
+    subtotal_snap: Decimal  
     personalizacion: Optional[list[int]] = None
 
 
@@ -136,5 +132,23 @@ class PedidoDetail(PedidoRead):
 class PedidoListResponse(BaseModel):
     items: list[PedidoRead]
     total: int
-    offset: int
-    limit: int
+
+class PedidoRead(BaseModel):
+    id: int
+    usuario_id: int
+    direccion_id: Optional[int] = None
+    estado_codigo: str
+    forma_pago_codigo: str
+    subtotal: Decimal
+    descuento: Decimal
+    costo_envio: Decimal
+    total: Decimal
+    notas: Optional[str] = None
+    creado_en: datetime = Field(alias="created_at")      
+    actualizado_en: datetime = Field(alias="updated_at")
+    estado: EstadoResumen
+    forma_pago: FormaPagoResumen
+    usuario: UsuarioResumen
+    direccion: Optional[DireccionResumen] = None
+
+    model_config = {"from_attributes": True, "populate_by_name": True}

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -228,3 +228,129 @@ class PedidoService:
                 items=[self._to_pedido_detail(p) for p in pedidos],
                  total=total,
             )   
+        
+
+    def obtener_pedido(self, pedido_id: int, usuario: UserPublic) -> PedidoDetail:
+        with PedidoUnitOfWork(self._session) as uow:
+            pedido = uow.pedidos.get_by_id(pedido_id)
+
+            if pedido is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Pedido {pedido_id} no encontrado",
+                )
+
+            es_privilegiado = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
+
+            if not es_privilegiado and pedido.usuario_id != usuario.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tenés permiso para ver este pedido",
+                )
+
+            return self._to_pedido_detail(pedido)
+        
+
+    def avanzar_pedido(self, pedido_id: int, observacion: Optional[str], usuario: UserPublic) -> PedidoDetail:
+        with PedidoUnitOfWork(self._session) as uow:
+            pedido = uow.pedidos.get_by_id(pedido_id)
+
+            if pedido is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Pedido {pedido_id} no encontrado",
+                )
+
+            estado_actual = pedido.estado_codigo
+            transiciones = TRANSICIONES_VALIDAS.get(estado_actual, set())
+
+            if not transiciones:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"El pedido en estado '{estado_actual}' no puede avanzar.",
+                )
+
+            nuevo_estado = next(iter(transiciones - {ESTADO["CANCELADO"]}), None)
+
+            if nuevo_estado is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"No hay un estado siguiente válido desde '{estado_actual}'.",
+                )
+
+            roles_permitidos = PERMISOS_TRANSICION.get((estado_actual, nuevo_estado))
+
+            if roles_permitidos is not None:
+                tiene_permiso = any(r in roles_permitidos for r in usuario.roles)
+
+                if not tiene_permiso:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"No tenés permiso para avanzar de '{estado_actual}' a '{nuevo_estado}'.",
+                    )
+
+            pedido.estado_codigo = nuevo_estado
+            pedido.updated_at = datetime.now(timezone.utc)
+            uow.pedidos.add(pedido)
+
+            uow.historial.add(
+                HistorialEstadoPedido(
+                    pedido_id=pedido.id,
+                    estado_desde=estado_actual,
+                    estado_hacia=nuevo_estado,
+                    usuario_id=usuario.id,
+                    motivo=observacion,
+                )
+            )
+
+            return self._to_pedido_detail(pedido)
+        
+
+    def cancelar_pedido(self, pedido_id: int, observacion: Optional[str], usuario: UserPublic) -> PedidoDetail:
+        with PedidoUnitOfWork(self._session) as uow:
+            pedido = uow.pedidos.get_by_id(pedido_id)
+
+            if pedido is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Pedido {pedido_id} no encontrado",
+                )
+
+            estado_actual = pedido.estado_codigo
+
+            if ESTADO["CANCELADO"] not in TRANSICIONES_VALIDAS.get(estado_actual, set()):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"El pedido en estado '{estado_actual}' no puede cancelarse.",
+                )
+
+            roles_permitidos = PERMISOS_TRANSICION.get((estado_actual, ESTADO["CANCELADO"]))
+            if roles_permitidos is not None:
+                if not any(r in roles_permitidos for r in usuario.roles):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"No tenés permiso para cancelar un pedido en estado '{estado_actual}'.",
+                    )
+
+            es_privilegiado = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
+            if not es_privilegiado and pedido.usuario_id != usuario.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tenés permiso para cancelar este pedido.",
+                )
+
+            pedido.estado_codigo = ESTADO["CANCELADO"]
+            pedido.updated_at = datetime.now(timezone.utc)
+            uow.pedidos.add(pedido)
+
+            uow.historial.add(
+                HistorialEstadoPedido(
+                    pedido_id=pedido.id,
+                    estado_desde=estado_actual,
+                    estado_hacia=ESTADO["CANCELADO"],
+                    usuario_id=usuario.id,
+                    motivo=observacion,
+                )
+            )
+
+            return self._to_pedido_detail(pedido)
