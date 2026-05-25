@@ -1,8 +1,6 @@
 from datetime import datetime
-
 from fastapi import HTTPException, status
 from sqlmodel import Session
-
 from app.modules.direcciones.schemas import (
     DireccionCreate,
     DireccionList,
@@ -18,11 +16,13 @@ class DireccionService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
+
     def _to_public(self, direccion: DireccionEntrega) -> DireccionPublic:
         return DireccionPublic(
             **direccion.model_dump(),
             activo=direccion.deleted_at is None,
         )
+
 
     def _get_owned_or_404(
         self,
@@ -39,6 +39,7 @@ class DireccionService:
             )
 
         return direccion
+
 
     def create(self, usuario: UserPublic, data: DireccionCreate) -> DireccionPublic:
         with DireccionUnitOfWork(self._session) as uow:
@@ -65,6 +66,7 @@ class DireccionService:
 
         return result
 
+
     def list_all(
         self,
         usuario: UserPublic,
@@ -80,10 +82,12 @@ class DireccionService:
                 total=total,
             )
 
+
     def get_by_id(self, usuario: UserPublic, direccion_id: int) -> DireccionPublic:
         with DireccionUnitOfWork(self._session) as uow:
             direccion = self._get_owned_or_404(uow, direccion_id, usuario.id)
             return self._to_public(direccion)
+
 
     def update(
         self,
@@ -104,6 +108,7 @@ class DireccionService:
 
         return result
 
+
     def soft_delete(self, usuario: UserPublic, direccion_id: int) -> None:
         with DireccionUnitOfWork(self._session) as uow:
             direccion = self._get_owned_or_404(uow, direccion_id, usuario.id)
@@ -116,10 +121,12 @@ class DireccionService:
 
             if era_principal:
                 otra = uow.direcciones.get_first_active_for_user(usuario.id)
+                
                 if otra:
                     otra.es_principal = True
                     otra.updated_at = datetime.utcnow()
                     uow.direcciones.add(otra)
+
 
     def set_principal(self, usuario: UserPublic, direccion_id: int) -> DireccionPublic:
         with DireccionUnitOfWork(self._session) as uow:

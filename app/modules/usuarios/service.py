@@ -14,6 +14,7 @@ class UsuarioService:
     def __init__(self, session: Session):
         self._session = session
 
+
     def get_by_username(self, username: str) -> UserPublic | None:
         with UsuarioUnitOfWork(self._session) as uow:
             usuario = uow.usuarios.get_by_username(username)
@@ -85,9 +86,7 @@ class UsuarioService:
 
             roles = [ur.rol_codigo for ur in user.usuario_roles]
 
-            access_token = create_access_token(
-                data={"sub": user.username, "roles": roles}
-            )
+            access_token = create_access_token(data={"sub": user.username, "roles": roles})
             
             return Token(
                 access_token=access_token,

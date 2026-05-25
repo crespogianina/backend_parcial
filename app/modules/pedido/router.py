@@ -7,7 +7,6 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.core.deps import get_current_active_user
 from app.modules.pedido.schemas import (
-    AvanzarEstadoRequest,
     PedidoCreate,
     PedidoDetail,
     PedidoListResponse,
@@ -17,12 +16,10 @@ from app.modules.usuarios.schemas import UserPublic
 
 router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 
-
 # ── Dependencias ──────────────────────────────────────────────────────────────
 
 def get_pedido_service(session: Session = Depends(get_session)) -> PedidoService:
     return PedidoService(session)
-
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 

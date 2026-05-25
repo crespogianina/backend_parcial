@@ -53,17 +53,19 @@ class ProductoService:
 
     def _validar_categorias_existen(self, uow: ProductoUnitOfWork, categorias: list[int]) -> None:
         for cat in categorias:
-                categoria = uow.categorias.get_by_id(cat)
-                if not categoria or categoria.deleted_at is not None:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail=f"Categoria {cat} no encontrada",
-                    )
+            categoria = uow.categorias.get_by_id(cat)
+
+            if not categoria or categoria.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Categoria {cat} no encontrada",
+                )
 
 
     def _validar_ingredientes_existen(self, uow: ProductoUnitOfWork, ingredientes: List[int]) -> None:
         for ing in ingredientes:
             ingrediente = uow.ingredientes.get_by_id(ing)
+
             if not ingrediente or ingrediente.deleted_at is not None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -142,12 +144,13 @@ class ProductoService:
             nombre: Optional[str]= None, 
             descripcion: Optional[str]= None, 
             disponible: Optional[bool]= None, 
+            categoria_id: Optional[int]= None, 
             offset: int = 0, 
             limit: int = 20
         ) -> ProductoList:
         with ProductoUnitOfWork(self._session) as uow:
-            productos = uow.productos.get_all_productos(nombre, descripcion, disponible, offset=offset, limit=limit)
-            total = uow.productos.count_all_productos(nombre, descripcion, disponible)
+            productos = uow.productos.get_all_productos(nombre, descripcion, disponible, categoria_id, offset=offset, limit=limit)
+            total = uow.productos.count_all_productos(nombre, descripcion, disponible, categoria_id)
 
             result = ProductoList(
                 data = [ProductoPublic(**i.model_dump(), activo = i.deleted_at is None)
@@ -158,18 +161,9 @@ class ProductoService:
         return result
 
 
-
     def get_by_id(self, producto_id: int) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:
             producto = self._get_or_404(uow, producto_id)
-
-            for pi in producto.producto_ingredientes:
-                print(pi.ingrediente)        
-
-            for pc in producto.producto_categorias:
-                print(pc.categoria)          
-
-
             result = ProductoPublic(**producto.model_dump(), activo=producto.deleted_at is None)
 
         return result
@@ -233,28 +227,34 @@ class ProductoService:
             if producto.deleted_at:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El producto de id:{id} ya se encuentra desactivado",
+                    detail=f"El producto de id:{producto_id} ya se encuentra desactivado",
                 )
             
             producto.deleted_at = datetime.utcnow()
             uow.productos.add(producto)
     
 
-    def activar_producto(self, producto_id: int) -> ProductoPublic:
+    def update_disponibilidad(self, producto_id: int, disponible: bool) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:
             producto = uow.productos.get_by_id(producto_id)
 
             if not producto:
-                raise HTTPException(status_code=404, detail=f"Producto de id:{id} no encontrado")
+                raise HTTPException(status_code=404, detail=f"Producto de id:{producto_id} no encontrado")
 
             if not producto.deleted_at:
-                raise HTTPException(status_code=409, detail=f"El producto de id:{id} ya está activo")
+                raise HTTPException(status_code=409, detail=f"El producto de id:{producto_id} se encuentra eliminado")
 
-            producto.deleted_at = None
-            producto.updated_at = datetime.utcnow()
+
+            if disponible == producto.disponible:
+                estado = "disponible" if disponible else "no disponible"
+
+                raise HTTPException(status_code=409, detail=f"El producto de id:{producto_id} ya se encuentra {estado}")
+            
+            producto.disponible = disponible
             uow.productos.add(producto)
             
             return ProductoPublic.model_validate(producto)  
+
 
     def obtener_categorias_producto(self, producto_id: int) -> List[CategoriaPublic]:
         with ProductoUnitOfWork(self._session) as uow:

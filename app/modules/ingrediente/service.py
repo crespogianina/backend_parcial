@@ -47,7 +47,7 @@ class IngredienteService:
             detail="No se puede eliminar un ingrediente asociado a productos"
             )
 
-    # ── Casos de uso ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────
 
     def create_ingrediente(self, data: IngredienteCreate) -> IngredientePublic: 
         with IngredienteUnitOfWork(self._session) as uow:

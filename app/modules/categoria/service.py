@@ -78,7 +78,7 @@ class CategoriaService:
                 detail="No se puede eliminar una categoría que tiene subcategorias activas"
             )
         
-    # ── Casos de uso ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────
 
     def create(self, data: CategoriaCreate) -> CategoriaPublic: 
         with CategoriaUnitOfWork(self._session) as uow:
@@ -92,10 +92,10 @@ class CategoriaService:
         return result
 
 
-    def get_all_categorias(self, nombre: Optional[str] = None, descripcion: Optional[str] = None, offset: int = 0, limit: int = 20) -> CategoriaList:
+    def get_all_categorias(self, nombre: Optional[str] = None, descripcion: Optional[str] = None, parent_id: Optional[int] = None, offset: int = 0, limit: int = 20) -> CategoriaList:
         with CategoriaUnitOfWork(self._session) as uow:
-            categorias = uow.categorias.get_all_categorias(nombre=nombre, descripcion=descripcion, offset=offset, limit=limit)
-            total = uow.categorias.count_all_categorias(nombre=nombre, descripcion=descripcion)
+            categorias = uow.categorias.get_all_categorias(nombre=nombre, descripcion=descripcion, parent_id=parent_id, offset=offset, limit=limit)
+            total = uow.categorias.count_all_categorias(nombre=nombre, descripcion=descripcion, parent_id=parent_id)
 
             result = CategoriaList(
                 data = [CategoriaPublic(**i.model_dump(), activo=i.deleted_at is None)

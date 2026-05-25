@@ -1,26 +1,28 @@
-from datetime import date
+from datetime import date, datetime, time
 from typing import Optional
-
 from sqlalchemy import Select, func
 from sqlmodel import Session, select
 from app.core.repository import BaseRepository
-from app.modules.ingrediente.models import Ingrediente
 from app.modules.pedido.models import DetallePedido, HistorialEstadoPedido, Pedido
 from app.modules.pedido.schemas import PedidoDetail
-from app.modules.producto.models import Producto
 
 class DetallePedidoRepository(BaseRepository[DetallePedido]):
+    
     def __init__(self, session: Session) -> None:
         super().__init__(session, DetallePedido)
+
 
     def add_all(self, items: list) -> None:
         for item in items:
             self.session.add(item)
         self.session.flush()
 
+
+
 class HistorialEstadoPedidoRepository(BaseRepository[HistorialEstadoPedido]):
     def __init__(self, session: Session) -> None:
         super().__init__(session, HistorialEstadoPedido)
+
 
 
 class PedidoRepository(BaseRepository[Pedido]):
@@ -45,10 +47,10 @@ class PedidoRepository(BaseRepository[Pedido]):
             statement = statement.where(Pedido.usuario_id == usuario_id)
 
         if fecha_desde is not None:
-            statement = statement.where(Pedido.created_at >= fecha_desde)
+            statement = statement.where(Pedido.created_at >= datetime.combine(fecha_desde, time.min))
 
         if fecha_hasta is not None:
-            statement = statement.where(Pedido.created_at <= fecha_hasta)
+            statement = statement.where(Pedido.created_at <= datetime.combine(fecha_hasta, time.max))
 
         return statement
 
@@ -67,6 +69,7 @@ class PedidoRepository(BaseRepository[Pedido]):
         statement = statement.order_by(Pedido.created_at.desc())
 
         return list(self.session.exec(statement.offset(offset).limit(limit)).all())
+
 
     def count_all_pedidos(
             self, 

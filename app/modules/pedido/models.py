@@ -66,7 +66,7 @@ class Pedido(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
-    # deleted_at: Optional[datetime] = Field(default=None) 
+    deleted_at: Optional[datetime] = Field(default=None) 
 
     usuario: Optional["Usuario"] = Relationship(
         back_populates="pedidos",

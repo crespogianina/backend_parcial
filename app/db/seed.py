@@ -5,21 +5,12 @@ from app.core.security import hash_password
 from app.modules.usuarios.model import Rol, Usuario, UsuarioRol
 from app.modules.pedido.models import EstadoPedido, FormaPago
 
-
-# ---------------------------------------------------------------------------
-# Roles
-# ---------------------------------------------------------------------------
-
 ROLES = [
     {"codigo": "ADMIN",   "nombre": "Administrador", "descripcion": "Acceso total sin restricciones"},
     {"codigo": "STOCK",   "nombre": "Stock",          "descripcion": "Actualiza stock y disponibilidad"},
     {"codigo": "PEDIDOS", "nombre": "Pedidos",        "descripcion": "Avanza estados de pedidos"},
     {"codigo": "CLIENT",  "nombre": "Cliente",        "descripcion": "Opera solo sus propios datos"},
 ]
-
-# ---------------------------------------------------------------------------
-# Usuarios
-# ---------------------------------------------------------------------------
 
 USUARIOS = [
     {
@@ -40,10 +31,6 @@ USUARIOS = [
     },
 ]
 
-# ---------------------------------------------------------------------------
-# Estados de pedido — codigo es la PK
-# ---------------------------------------------------------------------------
-
 ESTADOS_PEDIDO = [
     {"codigo": "PENDIENTE",      "descripcion": "Pedido creado, esperando pago",    "orden": 1, "es_terminal": False},
     {"codigo": "CONFIRMADO",     "descripcion": "Pago aprobado, stock decrementado","orden": 2, "es_terminal": False},
@@ -53,19 +40,10 @@ ESTADOS_PEDIDO = [
     {"codigo": "CANCELADO",      "descripcion": "Cancelado",                        "orden": 6, "es_terminal": True},
 ]
 
-# ---------------------------------------------------------------------------
-# Formas de pago
-# ---------------------------------------------------------------------------
-
 FORMAS_PAGO = [
     {"codigo": "MP",       "descripcion": "Mercado Pago", "habilitado": True},
     {"codigo": "EFECTIVO", "descripcion": "Efectivo",     "habilitado": True},
 ]
-
-
-# ---------------------------------------------------------------------------
-# Funciones de seed
-# ---------------------------------------------------------------------------
 
 def seed_roles(session: Session) -> None:
     print("\n── Roles ──")
@@ -144,11 +122,6 @@ def seed_formas_pago(session: Session) -> None:
             session.add(FormaPago(**data))
             print(f"  [+] Creado:    {data['codigo']}")
     session.commit()
-
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 def run() -> None:
     print("=== Seed — Food Store ===")

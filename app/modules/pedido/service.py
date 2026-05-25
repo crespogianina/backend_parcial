@@ -5,42 +5,40 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from app.modules.direcciones.model import DireccionEntrega
 from app.modules.direcciones.schemas import DireccionPublic
-from app.modules.direcciones.service import DireccionService
 from app.modules.pedido.models import DetallePedido, HistorialEstadoPedido, Pedido
-from app.modules.pedido.schemas import DetallePedidoCreate, DetallePedidoRead, DireccionSnapshot, ItemPedidoRequest, PedidoCreate, PedidoDetail, PedidoListResponse, PedidoListResponse, PedidoRead
+from app.modules.pedido.schemas import DetallePedidoRead, DireccionSnapshot, PedidoCreate, PedidoDetail, PedidoListResponse, PedidoListResponse
 from app.modules.pedido.unit_of_work import PedidoUnitOfWork
 from app.modules.producto.models import Producto
 from app.modules.producto.service import ProductoService
 from app.modules.usuarios.schemas import UserPublic
 
 ESTADO = {
-    "PENDIENTE":      "PENDIENTE",
-    "CONFIRMADO":     "CONFIRMADO",
+    "PENDIENTE": "PENDIENTE",
+    "CONFIRMADO": "CONFIRMADO",
     "EN_PREPARACION": "EN_PREPARACION",
-    "EN_CAMINO":      "EN_CAMINO",
-    "ENTREGADO":      "ENTREGADO",
-    "CANCELADO":      "CANCELADO",
+    "EN_CAMINO": "EN_CAMINO",
+    "ENTREGADO": "ENTREGADO",
+    "CANCELADO": "CANCELADO",
 }
 
 TRANSICIONES_VALIDAS: dict[str, set[str]] = {
-    ESTADO["PENDIENTE"]:      {ESTADO["CONFIRMADO"], ESTADO["CANCELADO"]},
-    ESTADO["CONFIRMADO"]:     {ESTADO["EN_PREPARACION"], ESTADO["CANCELADO"]},
+    ESTADO["PENDIENTE"]: {ESTADO["CONFIRMADO"], ESTADO["CANCELADO"]},
+    ESTADO["CONFIRMADO"]: {ESTADO["EN_PREPARACION"], ESTADO["CANCELADO"]},
     ESTADO["EN_PREPARACION"]: {ESTADO["EN_CAMINO"], ESTADO["CANCELADO"]},
-    ESTADO["EN_CAMINO"]:      {ESTADO["ENTREGADO"]},
-    ESTADO["ENTREGADO"]:      set(),
-    ESTADO["CANCELADO"]:      set(),
+    ESTADO["EN_CAMINO"]: {ESTADO["ENTREGADO"]},
+    ESTADO["ENTREGADO"]: set(),
+    ESTADO["CANCELADO"]: set(),
 }
 
 PERMISOS_TRANSICION: dict[tuple[str, str], set[str] | None] = {
-    (ESTADO["PENDIENTE"],      ESTADO["CONFIRMADO"]):     None,
-    (ESTADO["PENDIENTE"],      ESTADO["CANCELADO"]):      {"CLIENT", "PEDIDOS", "ADMIN"},
-    (ESTADO["CONFIRMADO"],     ESTADO["EN_PREPARACION"]): {"PEDIDOS", "ADMIN"},
-    (ESTADO["CONFIRMADO"],     ESTADO["CANCELADO"]):      {"PEDIDOS", "ADMIN"},
-    (ESTADO["EN_PREPARACION"], ESTADO["EN_CAMINO"]):      {"PEDIDOS", "ADMIN"},
-    (ESTADO["EN_PREPARACION"], ESTADO["CANCELADO"]):      {"ADMIN"},
-    (ESTADO["EN_CAMINO"],      ESTADO["ENTREGADO"]):      {"PEDIDOS", "ADMIN"},
+    (ESTADO["PENDIENTE"], ESTADO["CONFIRMADO"]): None,
+    (ESTADO["PENDIENTE"], ESTADO["CANCELADO"]): {"CLIENT", "PEDIDOS", "ADMIN"},
+    (ESTADO["CONFIRMADO"], ESTADO["EN_PREPARACION"]): {"PEDIDOS", "ADMIN"},
+    (ESTADO["CONFIRMADO"], ESTADO["CANCELADO"]): {"PEDIDOS", "ADMIN"},
+    (ESTADO["EN_PREPARACION"], ESTADO["EN_CAMINO"]): {"PEDIDOS", "ADMIN"},
+    (ESTADO["EN_PREPARACION"], ESTADO["CANCELADO"]): {"ADMIN"},
+    (ESTADO["EN_CAMINO"], ESTADO["ENTREGADO"]): {"PEDIDOS", "ADMIN"},
 }
 
 ESTADOS_CON_STOCK_DECREMENTADO = {
@@ -63,7 +61,7 @@ class PedidoService:
         for item in items:
             producto_locked = uow.productos.get_with_lock(item.producto_id)
 
-            if producto_locked is None:
+            if producto_locked is None or producto_locked.deleted_at is not None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Producto con id {item.producto_id} no encontrado."
@@ -85,6 +83,9 @@ class PedidoService:
             precio_snapshot: Decimal = producto_locked.precio_base
             subtotal = precio_snapshot * item.cantidad
 
+            producto_locked.stock_cantidad -= item.cantidad
+            uow.productos.add(producto_locked)
+
             detalles_data.append({
                 "producto_id":      producto_locked.id,
                 "nombre_snapshot":  producto_locked.nombre,   
@@ -92,7 +93,7 @@ class PedidoService:
                 "precio_snapshot":  precio_snapshot,
                 "subtotal_snap":    subtotal,                 
                 "personalizacion":  item.personalizacion,
-            })
+            })            
 
         return detalles_data
 
@@ -133,7 +134,8 @@ class PedidoService:
             ],
         )
 
-    def _validar_y_capturar_direccion(self, direccion_id: int, usuario_id: int, uow: PedidoUnitOfWork) -> dict:
+
+    def _validar_direccion(self, direccion_id: int, usuario_id: int, uow: PedidoUnitOfWork) -> None:
         direccion: DireccionPublic = uow.direcciones.get_by_id(direccion_id)
 
         if not direccion or direccion.deleted_at is not None:
@@ -141,13 +143,12 @@ class PedidoService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Dirección {direccion_id} no encontrada",
             )
+        
         if direccion.usuario_id != usuario_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="La dirección no pertenece al usuario",
             )
-
-        return DireccionSnapshot(**direccion.model_dump()).model_dump()
 
 
     def _calcular_costo_envio(self, subtotal: Decimal) -> Decimal:
@@ -161,9 +162,8 @@ class PedidoService:
 
     def crear_pedido(self, usuario_id: int, data: PedidoCreate) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
+            self._validar_direccion(data.direccion_id, usuario_id, uow)
             detalles_data = self._validar_y_construir_detalles(data.items, uow)
-
-            direccion_snapshot = self._validar_y_capturar_direccion(data.direccion_id, usuario_id, uow)
 
             subtotal = sum(i["subtotal_snap"] for i in detalles_data)
             costo_envio = self._calcular_costo_envio(subtotal)
@@ -217,6 +217,7 @@ class PedidoService:
                 offset=offset,
                 limit=limit,
             )
+
             total = uow.pedidos.count_all_pedidos(
                 usuario_id=usuario_id,
                 estado=estado,
@@ -232,20 +233,20 @@ class PedidoService:
 
     def obtener_pedido(self, pedido_id: int, usuario: UserPublic) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
+            rol_permitido = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
+
+            if not rol_permitido and pedido.usuario_id != usuario.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tenés permiso para ver este pedido",
+                )
+        
             pedido = uow.pedidos.get_by_id(pedido_id)
 
             if pedido is None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Pedido {pedido_id} no encontrado",
-                )
-
-            es_privilegiado = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
-
-            if not es_privilegiado and pedido.usuario_id != usuario.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="No tenés permiso para ver este pedido",
                 )
 
             return self._to_pedido_detail(pedido)
@@ -325,6 +326,7 @@ class PedidoService:
                 )
 
             roles_permitidos = PERMISOS_TRANSICION.get((estado_actual, ESTADO["CANCELADO"]))
+
             if roles_permitidos is not None:
                 if not any(r in roles_permitidos for r in usuario.roles):
                     raise HTTPException(
@@ -332,8 +334,9 @@ class PedidoService:
                         detail=f"No tenés permiso para cancelar un pedido en estado '{estado_actual}'.",
                     )
 
-            es_privilegiado = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
-            if not es_privilegiado and pedido.usuario_id != usuario.id:
+            rol_permitido = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
+
+            if not rol_permitido and pedido.usuario_id != usuario.id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para cancelar este pedido.",

@@ -78,5 +78,3 @@ def activar_ingrediente(
 ) -> dict:
     svc.activar_ingrediente(id)
     return {"mensaje": f"Se activo correctamente el ingrediente con id {id}"} 
-
- 

@@ -8,7 +8,7 @@ from sqlmodel import SQLModel
 class ItemPedidoRequest(SQLModel):
     producto_id: int
     cantidad: int = Field(ge=1)
-    personalizacion: list[int] = Field(default_factory=list)
+    personalizacion: Optional[list[int]] = Field(default_factory=list)
 
 
 class DireccionSnapshot(SQLModel):
@@ -29,12 +29,10 @@ class UsuarioResumen(SQLModel):
     email: str
 
 
-
 class DireccionResumen(SQLModel):
     id: int
     linea1: str          
     ciudad: str
-
 
 
 class EstadoResumen(SQLModel):
@@ -42,13 +40,9 @@ class EstadoResumen(SQLModel):
     descripcion: str    
 
 
-
 class FormaPagoResumen(SQLModel):
     codigo: str          
     descripcion: str    
-
-
-
 
 
 class PedidoCreate(SQLModel):
@@ -76,7 +70,7 @@ class DetallePedidoCreate(SQLModel):
     cantidad: int
     precio_snapshot: Decimal
     subtotal: Decimal
-    personalizacion: list[int]
+    personalizacion: Optional[list[int]] = Field(default_factory=list)
 
 
 class DetallePedidoRead(SQLModel):
@@ -95,7 +89,6 @@ class HistorialEstadoRead(SQLModel):
     usuario_id: int
     motivo: Optional[str] = None
     created_at: datetime
-
 
 
 class PedidoRead(SQLModel):
@@ -127,5 +120,3 @@ class PedidoDetail(PedidoRead):
 class PedidoListResponse(SQLModel):
     items: list[PedidoRead]
     total: int
-
-

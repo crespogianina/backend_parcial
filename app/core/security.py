@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from secrets import token_urlsafe
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
