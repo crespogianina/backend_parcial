@@ -1,7 +1,6 @@
 
-from datetime import datetime
+from datetime import timezone, datetime
 from decimal import Decimal
-from time import timezone
 from typing import TYPE_CHECKING, List, Optional, Text
 from pydantic import Field
 from sqlalchemy import ARRAY, BigInteger, Column, ForeignKey, Integer, Numeric, PrimaryKeyConstraint, String, Boolean, Index

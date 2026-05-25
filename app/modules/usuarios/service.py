@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
-from app.modules.usuarios.model import Usuario
+from app.modules.usuarios.model import Usuario, UsuarioRol
 from app.modules.usuarios.schemas import UserCreate, Token, UserPublic
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork
 
@@ -54,8 +54,16 @@ class UsuarioService:
             )
 
             result = uow.usuarios.add(usuario)
+
+            rol_client = UsuarioRol(
+                    usuario_id=result.id,
+                    rol_codigo="CLIENT",
+                    asignado_por_id=result.id
+            )
             
-            return UserPublic(**result.model_dump(), roles=[ur.rol_codigo for ur in result.usuario_roles])
+            uow.usuarios.add_rol(rol_client)
+
+            return UserPublic(**result.model_dump(), roles=["CLIENT"])
 
 
     def authenticate(self, username: str, password: str) -> Token:

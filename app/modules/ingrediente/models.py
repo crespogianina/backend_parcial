@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import Relationship, SQLModel, Field
+
 if TYPE_CHECKING:
     from app.modules.producto.models import ProductoIngrediente
 

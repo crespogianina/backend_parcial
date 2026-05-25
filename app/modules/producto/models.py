@@ -1,7 +1,6 @@
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
-from time import timezone
 from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import ARRAY, Column, Numeric, Relationship, SQLModel, Field, String
 
