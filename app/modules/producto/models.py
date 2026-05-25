@@ -1,9 +1,12 @@
 
 from datetime import datetime
 from decimal import Decimal
+from time import timezone
 from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import ARRAY, Column, Numeric, Relationship, SQLModel, Field, String
+
 if TYPE_CHECKING:
+    from app.modules.pedido.models import DetallePedido
     from app.modules.categoria.models import Categoria
     from app.modules.ingrediente.models import Ingrediente
     
@@ -13,7 +16,8 @@ class ProductoCategoria(SQLModel, table=True):
     producto_id: int= Field(foreign_key="productos.id",primary_key=True)
     categoria_id: int= Field(foreign_key="categorias.id",primary_key=True)
     es_principal: bool = Field(default=False, nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     
     producto: Optional["Producto"] = Relationship(back_populates="producto_categorias")
     categoria: Optional["Categoria"] = Relationship(back_populates="producto_categorias")
@@ -25,7 +29,8 @@ class ProductoIngrediente(SQLModel, table=True):
     producto_id: int= Field(foreign_key="productos.id",primary_key=True)
     ingrediente_id: int= Field(foreign_key="ingredientes.id",primary_key=True)
     es_removible: bool = Field(default=False, nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     
     producto: Optional["Producto"] = Relationship(back_populates="producto_ingredientes")
     ingrediente: Optional["Ingrediente"] = Relationship(back_populates="producto_ingredientes")
@@ -45,8 +50,8 @@ class Producto(SQLModel, table=True):
     stock_cantidad: int = Field(default=0, ge=0,nullable=False)
     disponible: bool = Field(default=True, nullable=False,index=True)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     deleted_at: Optional[datetime] = Field(default=None)
 
     producto_categorias: List["ProductoCategoria"] = Relationship(
@@ -55,3 +60,10 @@ class Producto(SQLModel, table=True):
     producto_ingredientes: List["ProductoIngrediente"] = Relationship(
         back_populates="producto"
     )
+    detalles_pedido: List["DetallePedido"] = Relationship(
+    back_populates="producto",
+    sa_relationship_kwargs={
+        "foreign_keys": "[DetallePedido.producto_id]",
+        "lazy": "selectin"
+    }
+)

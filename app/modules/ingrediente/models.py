@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import Relationship, SQLModel, Field
 if TYPE_CHECKING:
@@ -15,9 +15,9 @@ class Ingrediente(SQLModel, table=True):
     descripcion: Optional[str] = Field(default=None)
     es_alergeno: bool = Field(default=False, nullable=False)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    deleted_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    deleted_at: Optional[datetime] = Field(default=None)
 
     producto_ingredientes: List["ProductoIngrediente"] = Relationship(
         back_populates="ingrediente"

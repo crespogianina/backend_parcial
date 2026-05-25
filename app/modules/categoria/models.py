@@ -1,5 +1,6 @@
 
 from datetime import datetime
+from time import timezone
 from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import Relationship, SQLModel, Field
 if TYPE_CHECKING:
@@ -16,10 +17,10 @@ class Categoria(SQLModel, table=True):
     descripcion: Optional[str] = Field(default=None)
     imagen_url: Optional[str] = Field(default=None)
     
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    deleted_at: Optional[datetime] = None
-
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+    deleted_at: Optional[datetime] = Field(default=None)
+    
     hijos: List["Categoria"] = Relationship(
         back_populates='padre',
         sa_relationship_kwargs={
@@ -27,7 +28,6 @@ class Categoria(SQLModel, table=True):
         'lazy': 'selectin',
         },
     )
-    
     padre: Optional["Categoria"] = Relationship(
         back_populates='hijos',
         sa_relationship_kwargs={
@@ -35,7 +35,6 @@ class Categoria(SQLModel, table=True):
         'remote_side': '[Categoria.id]',
         },
     )
-
     producto_categorias: List["ProductoCategoria"] = Relationship(
         back_populates="categoria"
     )
