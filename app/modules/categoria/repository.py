@@ -43,7 +43,7 @@ class CategoriaRepository(BaseRepository[Categoria]):
             descripcion: Optional[str] = None, 
             parent_id: Optional[int] = None,
             offset: int = 0, 
-            limit: int = 20
+            limit: int = 50
         ) -> list[Categoria]:
         statement = self._apply_filters(select(Categoria), nombre, descripcion, parent_id)
         statement = statement.order_by(Categoria.nombre)

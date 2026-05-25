@@ -67,7 +67,7 @@ class ProductoRepository(BaseRepository[Producto]):
             disponible: Optional[bool] = None,
             categoria_id: Optional[int] = None,
             offset: int = 0, 
-            limit: int = 20
+            limit: int = 50
         ) -> list[Producto]:
         statement = self._apply_filters(select(Producto), nombre, descripcion, disponible, categoria_id)
         statement = statement.offset(offset).limit(limit).order_by(Producto.nombre.desc())
@@ -78,12 +78,16 @@ class ProductoRepository(BaseRepository[Producto]):
     def count_all_productos(self,
         nombre: Optional[str] = None,
         descripcion: Optional[str] = None,
-        disponible: Optional[bool] = None
+        disponible: Optional[bool] = None,
+        categoria_id: Optional[int] = None,
     ) -> int:
-        statement =self._apply_filters(select(func.count()).select_from(Producto), nombre, descripcion, disponible)
+        statement = self._apply_filters(
+            select(func.count()).select_from(Producto),
+            nombre, descripcion, disponible, categoria_id
+        )
 
         return self.session.exec(statement).one()
-    
+        
 
     def get_categorias_by_producto(self, producto_id: int) -> List[Categoria]:
         statement = (

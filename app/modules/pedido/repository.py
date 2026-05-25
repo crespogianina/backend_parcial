@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import Select, func
 from sqlmodel import Session, select
 from app.core.repository import BaseRepository
-from app.modules.pedido.models import DetallePedido, HistorialEstadoPedido, Pedido
+from app.modules.pedido.models import DetallePedido, FormaPago, HistorialEstadoPedido, Pedido
 from app.modules.pedido.schemas import PedidoDetail
 
 class DetallePedidoRepository(BaseRepository[DetallePedido]):
@@ -23,6 +23,18 @@ class HistorialEstadoPedidoRepository(BaseRepository[HistorialEstadoPedido]):
     def __init__(self, session: Session) -> None:
         super().__init__(session, HistorialEstadoPedido)
 
+
+
+class FormaPagoRepository(BaseRepository[FormaPago]):
+    def __init__(self, session: Session) -> None:
+        super().__init__(session, FormaPago)
+
+    def get_habilitada(self, codigo: str) -> FormaPago | None:
+        return self.session.exec(
+            select(FormaPago)
+            .where(FormaPago.codigo == codigo)
+            .where(FormaPago.habilitado == True)
+        ).first()
 
 
 class PedidoRepository(BaseRepository[Pedido]):
@@ -63,7 +75,7 @@ class PedidoRepository(BaseRepository[Pedido]):
             fecha_desde: Optional[date] = None,
             fecha_hasta: Optional[date] = None,
             offset: int = 0, 
-            limit: int = 20
+            limit: int = 50
         ) -> list[PedidoDetail]:
         statement = self._apply_filters(select(Pedido), estado, usuario_id, fecha_desde, fecha_hasta)
         statement = statement.order_by(Pedido.created_at.desc())

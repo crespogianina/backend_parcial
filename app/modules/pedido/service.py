@@ -162,7 +162,11 @@ class PedidoService:
 
     def crear_pedido(self, usuario_id: int, data: PedidoCreate) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
-            self._validar_direccion(data.direccion_id, usuario_id, uow)
+            self._validar_forma_pago(data.forma_pago_codigo, uow)
+
+            if  data.direccion_id is not None:
+                self._validar_direccion(data.direccion_id, usuario_id, uow)
+                
             detalles_data = self._validar_y_construir_detalles(data.items, uow)
 
             subtotal = sum(i["subtotal_snap"] for i in detalles_data)

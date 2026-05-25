@@ -1,5 +1,6 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Response, status
+from fastapi.params import Query
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 from app.core.database import get_session
@@ -63,8 +64,14 @@ def ruta_privada(current_user: Annotated[UserPublic, Depends(get_current_active_
 
 
 @router.get("/admin/usuarios", response_model=list[UserPublic])
-def list_users( _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: UsuarioService = Depends(get_usuario_service)) -> list[UserPublic]:
-    return svc.list_all()
+def list_users(
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
+    rol: Annotated[Optional[str], Query(description="Filtrar por rol: ADMIN, STOCK, PEDIDOS, CLIENT")] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    svc: UsuarioService = Depends(get_usuario_service)
+) -> list[UserPublic]:
+    return svc.list_all(rol=rol, offset=offset, limit=limit)
 
 
 @router.post("/admin/usuarios/{user_id}/desactivar", response_model=UserPublic)

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -95,9 +96,9 @@ class UsuarioService:
             )
 
 
-    def list_all(self) -> list[UserPublic]:
+    def list_all(self, rol: Optional[str], offset: int, limit: int) -> list[UserPublic]:
         with UsuarioUnitOfWork(self._session) as uow:
-            usuarios = uow.usuarios.get_all()
+            usuarios = uow.usuarios.get_all_usuarios(rol=rol, offset=offset, limit=limit)
             result =[UserPublic(**u.model_dump(), roles=[ur.rol_codigo for ur in u.usuario_roles]) for u in usuarios] 
 
         return result

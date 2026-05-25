@@ -102,8 +102,6 @@ class PedidoRead(SQLModel):
     costo_envio: Decimal
     total: Decimal
     notas: Optional[str] = None
-    creado_en: datetime = Field(alias="created_at")      
-    actualizado_en: datetime = Field(alias="updated_at")
     estado: EstadoResumen
     forma_pago: FormaPagoResumen
     usuario: UsuarioResumen
