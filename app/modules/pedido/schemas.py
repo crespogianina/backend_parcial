@@ -1,16 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import Field
+from sqlmodel import SQLModel
 
 
-class ItemPedidoRequest(BaseModel):
+class ItemPedidoRequest(SQLModel):
     producto_id: int
     cantidad: int = Field(ge=1)
     personalizacion: list[int] = Field(default_factory=list)
 
 
-class DireccionSnapshot(BaseModel):
+class DireccionSnapshot(SQLModel):
     alias:          Optional[str] = None
     ciudad:         str
     linea1:         str
@@ -21,50 +22,47 @@ class DireccionSnapshot(BaseModel):
     longitud:       Optional[float] = None
 
 
-class UsuarioResumen(BaseModel):
+class UsuarioResumen(SQLModel):
     id: int
     nombre: str
     apellido: str
     email: str
 
-    model_config = {"from_attributes": True}
 
 
-class DireccionResumen(BaseModel):
+class DireccionResumen(SQLModel):
     id: int
     linea1: str          
     ciudad: str
 
-    model_config = {"from_attributes": True}
 
 
-class EstadoResumen(BaseModel):
+class EstadoResumen(SQLModel):
     codigo: str          
     descripcion: str    
 
-    model_config = {"from_attributes": True}
 
 
-class FormaPagoResumen(BaseModel):
+class FormaPagoResumen(SQLModel):
     codigo: str          
     descripcion: str    
 
-    model_config = {"from_attributes": True}
 
 
 
-class PedidoCreate(BaseModel):
+
+class PedidoCreate(SQLModel):
     items: list[ItemPedidoRequest] = Field(min_length=1)
     direccion_id: int
     forma_pago_codigo: str
 
 
-class AvanzarEstadoRequest(BaseModel):
+class AvanzarEstadoRequest(SQLModel):
     nuevo_estado: str
     observacion: str | None = None
 
 
-class PagoRead(BaseModel):
+class PagoRead(SQLModel):
     id: int
     monto: Decimal
     mp_payment_id: str
@@ -72,7 +70,7 @@ class PagoRead(BaseModel):
     creado_en: datetime
 
 
-class DetallePedidoCreate(BaseModel):
+class DetallePedidoCreate(SQLModel):
     producto_id: int
     producto_nombre: str
     cantidad: int
@@ -81,7 +79,7 @@ class DetallePedidoCreate(BaseModel):
     personalizacion: list[int]
 
 
-class DetallePedidoRead(BaseModel):
+class DetallePedidoRead(SQLModel):
     producto_id: int
     nombre_snapshot: str   
     cantidad: int
@@ -90,7 +88,7 @@ class DetallePedidoRead(BaseModel):
     personalizacion: Optional[list[int]] = None
 
 
-class HistorialEstadoRead(BaseModel):
+class HistorialEstadoRead(SQLModel):
     id: int
     estado_desde: str
     estado_hacia: Optional[str] = None
@@ -98,42 +96,9 @@ class HistorialEstadoRead(BaseModel):
     motivo: Optional[str] = None
     created_at: datetime
 
-    model_config = {"from_attributes": True}
 
 
-class PedidoRead(BaseModel):
-    id: int
-    usuario_id: int
-    direccion_id: Optional[int]
-    estado_codigo: str
-    forma_pago_codigo: str
-    subtotal: Decimal
-    descuento: Decimal
-    costo_envio: Decimal
-    total: Decimal
-    notas: Optional[str] = None
-    creado_en: datetime
-    actualizado_en: datetime
-    estado: EstadoResumen
-    forma_pago: FormaPagoResumen
-    usuario: UsuarioResumen
-    direccion: Optional[DireccionResumen]
-
-    model_config = {"from_attributes": True}
-
-
-class PedidoDetail(PedidoRead):
-    direccion_snapshot: Optional[DireccionSnapshot] = None
-    detalles: list[DetallePedidoRead]
-    historial_estados: list[HistorialEstadoRead]
-    pagos: list[PagoRead]
-
-
-class PedidoListResponse(BaseModel):
-    items: list[PedidoRead]
-    total: int
-
-class PedidoRead(BaseModel):
+class PedidoRead(SQLModel):
     id: int
     usuario_id: int
     direccion_id: Optional[int] = None
@@ -151,4 +116,16 @@ class PedidoRead(BaseModel):
     usuario: UsuarioResumen
     direccion: Optional[DireccionResumen] = None
 
-    model_config = {"from_attributes": True, "populate_by_name": True}
+
+class PedidoDetail(PedidoRead):
+    direccion_snapshot: Optional[DireccionSnapshot] = None
+    detalles: list[DetallePedidoRead]
+    historial_estados: list[HistorialEstadoRead]
+    pagos: list[PagoRead]
+
+
+class PedidoListResponse(SQLModel):
+    items: list[PedidoRead]
+    total: int
+
+

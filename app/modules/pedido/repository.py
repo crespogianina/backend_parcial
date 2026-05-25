@@ -39,7 +39,7 @@ class PedidoRepository(BaseRepository[Pedido]):
         fecha_hasta: Optional[date] = None,
     ) -> Select:
         if estado is not None:
-            statement = statement.where(Pedido.estado == estado)
+            statement = statement.where(Pedido.estado_codigo  == estado)
 
         if usuario_id is not None:
             statement = statement.where(Pedido.usuario_id == usuario_id)
@@ -63,7 +63,7 @@ class PedidoRepository(BaseRepository[Pedido]):
             offset: int = 0, 
             limit: int = 20
         ) -> list[PedidoDetail]:
-        statement = self._apply_filters(select(Pedido), usuario_id, estado, fecha_desde, fecha_hasta)
+        statement = self._apply_filters(select(Pedido), estado, usuario_id, fecha_desde, fecha_hasta)
         statement = statement.order_by(Pedido.created_at.desc())
 
         return list(self.session.exec(statement.offset(offset).limit(limit)).all())
