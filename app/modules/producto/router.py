@@ -20,7 +20,7 @@ def get_producto_service(session: Session = Depends(get_session)) -> ProductoSer
 @router.post("/", response_model=ProductoPublic, status_code=status.HTTP_201_CREATED, summary="Crear un producto")
 def create_producto(
     data: ProductoCreate, 
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], 
     svc: ProductoService = Depends(get_producto_service)
 ) -> ProductoPublic:
     return svc.create(data)
@@ -47,7 +47,7 @@ def get_producto_by_id(id: Annotated[int, Path(gt=0)], svc: ProductoService = De
 def edit_producto(
     id: Annotated[int, Path(gt=0)],
     producto: ProductoUpdate,               
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], 
     svc: ProductoService = Depends(get_producto_service)
 ) -> ProductoPublic:
     return svc.update(id, producto)
@@ -56,7 +56,7 @@ def edit_producto(
 @router.delete("/{id}", status_code=status.HTTP_200_OK, summary="Eliminar producto por id")
 def eliminar_producto(
     id: Annotated[int, Path(gt=0)],
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], 
     svc: ProductoService = Depends(get_producto_service),
 ) -> dict:
     svc.soft_delete(id)
@@ -66,7 +66,7 @@ def eliminar_producto(
 @router.post("/{id}", status_code=status.HTTP_200_OK, summary="Activar producto por id")
 def activar_producto(
     id: Annotated[int, Path(gt=0)], 
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], 
     svc: ProductoService = Depends(get_producto_service)
 ) -> dict:
     svc.activar_producto(id)

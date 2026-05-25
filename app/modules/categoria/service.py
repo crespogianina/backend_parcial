@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -38,12 +38,32 @@ class CategoriaService:
             )    
 
 
-    def validate_parent_id_different(self, parent_id: Optional[int], categoria_id: int):
-        if parent_id is not None and parent_id == categoria_id:
+    def _validate_no_ciclo(
+        self, uow: CategoriaUnitOfWork, categoria_id: int, nuevo_parent_id: int
+    ) -> None:
+        if nuevo_parent_id == categoria_id:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Una categia no puede ser padre de si misma"
+                detail="Una categoría no puede ser padre de sí misma",
             )
+
+        cursor_id = nuevo_parent_id
+        visited = set()
+
+        while cursor_id is not None:
+            if cursor_id in visited:
+                break
+
+            if cursor_id == categoria_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="No se puede agregar como padre una categoría que es descendiente del nodo actual",
+                )
+
+            visited.add(cursor_id)
+            parent = uow.categorias.get_by_id(cursor_id)
+
+            cursor_id = parent.parent_id if parent else None
 
 
     def _validate_no_active_children(self, categoria: Categoria) -> None:
@@ -63,6 +83,7 @@ class CategoriaService:
     def create(self, data: CategoriaCreate) -> CategoriaPublic: 
         with CategoriaUnitOfWork(self._session) as uow:
             self._assert_nombre_unique(uow, data.nombre)
+            self._get_or_404(uow, data.parent_id) if data.parent_id else None
 
             categoria = Categoria.model_validate(data)
             uow.categorias.add(categoria)
@@ -93,23 +114,21 @@ class CategoriaService:
         return result
     
 
-    def update(self, categoria_id: int, data: CategoriaUpdate) -> CategoriaPublic: 
+    def update(self, categoria_id: int, data: CategoriaUpdate) -> CategoriaPublic:
         with CategoriaUnitOfWork(self._session) as uow:
             categoria = self._get_or_404(uow, categoria_id)
 
             if data.parent_id is not None:
-                self._get_or_404(uow, data.parent_id)
-                self.validate_parent_id_different(data.parent_id, categoria_id)
+                self._get_or_404(uow, data.parent_id)           
+                self._validate_no_ciclo(uow, categoria_id, data.parent_id)
 
             if data.nombre and data.nombre != categoria.nombre:
                 self._assert_nombre_unique(uow, data.nombre)
-            
-            patch = data.model_dump(exclude_unset=True)
 
-            for field, value in patch.items():
+            for field, value in data.model_dump(exclude_unset=True).items():
                 setattr(categoria, field, value)
 
-            categoria.updated_at = datetime.utcnow() 
+            categoria.updated_at = datetime.now(timezone.utc)   
             uow.categorias.add(categoria)
             result = CategoriaPublic(**categoria.model_dump(), activo=categoria.deleted_at is None)
 
@@ -134,7 +153,7 @@ class CategoriaService:
                 
             self._validate_no_active_children(categoria)
             
-            categoria.deleted_at = datetime.utcnow()
+            categoria.deleted_at = datetime.now(timezone.utc)
             uow.categorias.add(categoria)
 
 

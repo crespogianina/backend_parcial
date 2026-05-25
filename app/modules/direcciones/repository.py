@@ -2,9 +2,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Select
 from sqlmodel import Session, func, select
 
-if TYPE_CHECKING:
-    from app.core.repository import BaseRepository
-    from app.modules.usuarios.model import DireccionEntrega
+from app.core.repository import BaseRepository
+from app.modules.direcciones.model import DireccionEntrega
 
 class DireccionRepository(BaseRepository[DireccionEntrega]):
 

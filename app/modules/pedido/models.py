@@ -1,10 +1,9 @@
 
 from datetime import timezone, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, List, Optional, Text
-from pydantic import Field
-from sqlalchemy import ARRAY, BigInteger, Column, ForeignKey, Integer, Numeric, PrimaryKeyConstraint, String, Boolean, Index
-from sqlmodel import Relationship, SQLModel
+from typing import TYPE_CHECKING, List, Optional
+from sqlalchemy import ARRAY, BigInteger, Column, ForeignKey, Integer, Numeric, PrimaryKeyConstraint, String, Boolean, Text
+from sqlmodel import Relationship, SQLModel, Field
 
 if TYPE_CHECKING:
     from app.modules.direcciones.model import DireccionEntrega
@@ -17,8 +16,8 @@ class EstadoPedido(SQLModel, table=True):
     codigo: str = Field(sa_column=Column(String(20), primary_key=True))
 
     descripcion: str = Field(sa_column=Column(String(80), nullable=False))
-    orden: int = Field(sa_column=Column(Integer), nullable=False)
-    es_terminal: bool = Field(sa_column=Column(Boolean), nullable=False)
+    orden: int = Field(sa_column=Column(Integer, nullable=False))
+    es_terminal: bool = Field(sa_column=Column(Boolean, nullable=False))
 
     pedidos: List["Pedido"] = Relationship(
         back_populates="estado",
@@ -40,7 +39,7 @@ class FormaPago(SQLModel, table=True):
     codigo: str = Field(sa_column=Column(String(20), primary_key=True))
 
     descripcion: str = Field(sa_column=Column(String(80), nullable=False))
-    habilitado: bool = Field(sa_column=Column(Boolean), nullable=False, default=True)
+    habilitado: bool = Field(sa_column=Column(Boolean, nullable=False, default=True))
 
     pedidos: List["Pedido"] = Relationship(
         back_populates="forma_pago",
@@ -63,7 +62,7 @@ class Pedido(SQLModel, table=True):
     costo_envio: Decimal = Field(default=Decimal("50.00"), sa_column=Column( Numeric(10, 2), nullable=False, default=50.00))
     total: Decimal = Field(sa_column=Column( Numeric(10, 2), nullable=False))
 
-    notas: Optional[str] = Field(default=None, sa_column=Column(Text))
+    notas: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)

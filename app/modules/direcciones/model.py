@@ -2,13 +2,11 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, TYPE_CHECKING, Optional
 
-from pydantic import Field
 from sqlalchemy import BigInteger, Index, Numeric
-from sqlmodel import Column, ForeignKey, Relationship, SQLModel
-
+from sqlmodel import Column, ForeignKey, Relationship, SQLModel, Field
+from app.modules.pedido.models import Pedido
 
 if TYPE_CHECKING:
-    from app.modules.pedido.models import Pedido
     from app.modules.usuarios.model import Usuario
 
 
@@ -17,7 +15,7 @@ class DireccionEntrega(SQLModel, table=True):
 
     __table_args__ = (Index("ix_direcciones_entrega_usuario_id", "usuario_id"),)
 
-    id: Optional[int] = Field( default=None, sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
+    id: Optional[int] = Field(default=None, primary_key=True)
 
     usuario_id: int = Field(sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=False))
 

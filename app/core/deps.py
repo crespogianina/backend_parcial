@@ -54,11 +54,10 @@ async def get_current_user(
 
     user = svc.get_by_username(username)
 
-    print(user)
     if user is None:
         raise credentials_exception
 
-    return UserPublic.model_validate(user)
+    return user
 
 
 async def get_current_active_user( current_user: Annotated[Usuario, Depends(get_current_user)]) -> UserPublic:

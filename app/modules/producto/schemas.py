@@ -13,6 +13,18 @@ class IngredienteAsignar(SQLModel):
     es_removible: bool = False
 
 
+class CategoriaProductoRead(SQLModel):
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    es_principal: bool
+
+class IngredienteProductoRead(SQLModel):
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    es_removible: bool
+
 class ProductoBase(SQLModel):
     nombre: str = Field(min_length=2, max_length=150)
     descripcion: Optional[str] = Field(default=None)
@@ -30,6 +42,8 @@ class ProductoCreate(ProductoBase):
 class ProductoPublic(ProductoBase):
     id: int
     activo: bool
+    categorias: List[CategoriaProductoRead]
+    ingredientes: List[IngredienteProductoRead]
 
 
 class ProductoUpdate(SQLModel):

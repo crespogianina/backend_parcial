@@ -3,42 +3,69 @@ from sqlmodel import Session, select
 from app.core.database import engine, create_db_and_tables
 from app.core.security import hash_password
 from app.modules.usuarios.model import Rol, Usuario, UsuarioRol
+from app.modules.pedido.models import EstadoPedido, FormaPago
 
 
 # ---------------------------------------------------------------------------
-# Roles según ERD (PK semántica)
+# Roles
 # ---------------------------------------------------------------------------
 
 ROLES = [
     {"codigo": "ADMIN",   "nombre": "Administrador", "descripcion": "Acceso total sin restricciones"},
     {"codigo": "STOCK",   "nombre": "Stock",          "descripcion": "Actualiza stock y disponibilidad"},
-    {"codigo": "PEDIDOS", "nombre": "Pedidos",         "descripcion": "Avanza estados de pedidos"},
-    {"codigo": "CLIENT",  "nombre": "Cliente",         "descripcion": "Opera solo sus propios datos"},
+    {"codigo": "PEDIDOS", "nombre": "Pedidos",        "descripcion": "Avanza estados de pedidos"},
+    {"codigo": "CLIENT",  "nombre": "Cliente",        "descripcion": "Opera solo sus propios datos"},
 ]
 
 # ---------------------------------------------------------------------------
-# Usuarios iniciales
+# Usuarios
 # ---------------------------------------------------------------------------
 
 USUARIOS = [
     {
-        "username":  "admin",
-        "nombre":    "Administrador",
-        "apellido":  "Sistema",
-        "email":     "admin@example.com",
-        "password":  "Admin1234!",
-        "roles":     ["ADMIN"],
+        "username": "admin",
+        "nombre":   "Administrador",
+        "apellido": "Sistema",
+        "email":    "admin@example.com",
+        "password": "Admin1234!",
+        "roles":    ["ADMIN"],
     },
     {
-        "username":  "juan",
-        "nombre":    "Juan",
-        "apellido":  "Pérez",
-        "email":     "juan@example.com",
-        "password":  "Juan1234!",
-        "roles":     ["CLIENT"],
+        "username": "juan",
+        "nombre":   "Juan",
+        "apellido": "Pérez",
+        "email":    "juan@example.com",
+        "password": "Juan1234!",
+        "roles":    ["CLIENT"],
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Estados de pedido — codigo es la PK
+# ---------------------------------------------------------------------------
+
+ESTADOS_PEDIDO = [
+    {"codigo": "PENDIENTE",      "descripcion": "Pedido creado, esperando pago",    "orden": 1, "es_terminal": False},
+    {"codigo": "CONFIRMADO",     "descripcion": "Pago aprobado, stock decrementado","orden": 2, "es_terminal": False},
+    {"codigo": "EN_PREPARACION", "descripcion": "En cocina/preparación",            "orden": 3, "es_terminal": False},
+    {"codigo": "EN_CAMINO",      "descripcion": "En camino al cliente",             "orden": 4, "es_terminal": False},
+    {"codigo": "ENTREGADO",      "descripcion": "Entregado correctamente",          "orden": 5, "es_terminal": True},
+    {"codigo": "CANCELADO",      "descripcion": "Cancelado",                        "orden": 6, "es_terminal": True},
+]
+
+# ---------------------------------------------------------------------------
+# Formas de pago
+# ---------------------------------------------------------------------------
+
+FORMAS_PAGO = [
+    {"codigo": "MP",       "descripcion": "Mercado Pago", "habilitado": True},
+    {"codigo": "EFECTIVO", "descripcion": "Efectivo",     "habilitado": True},
+]
+
+
+# ---------------------------------------------------------------------------
+# Funciones de seed
+# ---------------------------------------------------------------------------
 
 def seed_roles(session: Session) -> None:
     print("\n── Roles ──")
@@ -55,7 +82,9 @@ def seed_roles(session: Session) -> None:
 def seed_usuarios(session: Session) -> None:
     print("\n── Usuarios ──")
     for data in USUARIOS:
-        existing = session.exec(select(Usuario).where(Usuario.username == data["username"])).first()
+        existing = session.exec(
+            select(Usuario).where(Usuario.username == data["username"])
+        ).first()
 
         if existing:
             print(f"  [=] Ya existe: {data['username']}")
@@ -73,7 +102,6 @@ def seed_usuarios(session: Session) -> None:
             session.refresh(usuario)
             print(f"  [+] Creado:    {data['username']} / {data['password']}")
 
-        # Asignar roles si no los tiene ya
         for rol_codigo in data["roles"]:
             existing_rol = session.exec(
                 select(UsuarioRol).where(
@@ -81,7 +109,6 @@ def seed_usuarios(session: Session) -> None:
                     UsuarioRol.rol_codigo == rol_codigo,
                 )
             ).first()
-
             if not existing_rol:
                 session.add(UsuarioRol(usuario_id=usuario.id, rol_codigo=rol_codigo))
                 print(f"      → Rol asignado: {rol_codigo}")
@@ -91,6 +118,38 @@ def seed_usuarios(session: Session) -> None:
     session.commit()
 
 
+def seed_estados_pedido(session: Session) -> None:
+    print("\n── Estados de Pedido ──")
+    for data in ESTADOS_PEDIDO:
+        existing = session.exec(
+            select(EstadoPedido).where(EstadoPedido.codigo == data["codigo"])
+        ).first()
+        if existing:
+            print(f"  [=] Ya existe: {data['codigo']}")
+        else:
+            session.add(EstadoPedido(**data))
+            print(f"  [+] Creado:    {data['codigo']}")
+    session.commit()
+
+
+def seed_formas_pago(session: Session) -> None:
+    print("\n── Formas de Pago ──")
+    for data in FORMAS_PAGO:
+        existing = session.exec(
+            select(FormaPago).where(FormaPago.codigo == data["codigo"])
+        ).first()
+        if existing:
+            print(f"  [=] Ya existe: {data['codigo']}")
+        else:
+            session.add(FormaPago(**data))
+            print(f"  [+] Creado:    {data['codigo']}")
+    session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
 def run() -> None:
     print("=== Seed — Food Store ===")
     create_db_and_tables()
@@ -98,8 +157,10 @@ def run() -> None:
     with Session(engine) as session:
         seed_roles(session)
         seed_usuarios(session)
+        seed_estados_pedido(session)
+        seed_formas_pago(session)
 
-    print("\nUsuarios disponibles:")
+    print("\n── Usuarios disponibles ──")
     print("  admin / Admin1234!  → ADMIN")
     print("  juan  / Juan1234!   → CLIENT")
     print()

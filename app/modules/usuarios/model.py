@@ -3,12 +3,10 @@ from typing import Optional, TYPE_CHECKING
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Text
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, PrimaryKeyConstraint
-
-
+from app.modules.direcciones.model import DireccionEntrega
 
 if TYPE_CHECKING:
     from app.modules.pedido.models import Pedido, HistorialEstadoPedido
-    from app.modules.direcciones.model import DireccionEntrega
 
 class Rol(SQLModel, table=True):
     __tablename__ = "roles"

@@ -18,7 +18,7 @@ def get_categoria_service(session: Session = Depends(get_session)) -> CategoriaS
 @router.post("/", response_model=CategoriaPublic, status_code=status.HTTP_201_CREATED, summary="Crear una categoria")
 def create_categoria(
     data: CategoriaCreate, 
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], 
     svc: CategoriaService = Depends(get_categoria_service)
 ) -> CategoriaPublic:
     return svc.create(data)
@@ -49,7 +49,7 @@ def get_categoria_por_id(id: Annotated[int, Path(gt=0)], svc: CategoriaService =
 def edit_categoria(
     id: Annotated[int, Path(gt=0)], 
     categoria: CategoriaUpdate,
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], 
     svc: CategoriaService = Depends(get_categoria_service)
 ) -> CategoriaPublic:
     return svc.update(id, categoria)
@@ -58,7 +58,7 @@ def edit_categoria(
 @router.delete("/{id}", status_code=status.HTTP_200_OK, response_model=dict, summary="Eliminar categoria por id")
 def eliminar_categoria(
     id: Annotated[int, Path(gt=0)],
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], 
     svc: CategoriaService = Depends(get_categoria_service)
 ) -> dict:
     svc.soft_delete(id)
@@ -69,7 +69,7 @@ def eliminar_categoria(
 @router.post("/{id}/activar", status_code=status.HTTP_200_OK, response_model=dict, summary="Activar categoria por id")
 def activar_categoria(
     id: Annotated[int, Path(gt=0)],
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))],
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     svc: CategoriaService = Depends(get_categoria_service)
 ) -> dict:
     svc.activar_categoria(id)

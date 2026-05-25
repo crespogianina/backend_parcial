@@ -162,6 +162,14 @@ class ProductoService:
     def get_by_id(self, producto_id: int) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:
             producto = self._get_or_404(uow, producto_id)
+
+            for pi in producto.producto_ingredientes:
+                print(pi.ingrediente)        
+
+            for pc in producto.producto_categorias:
+                print(pc.categoria)          
+
+
             result = ProductoPublic(producto.model_dump, activo = producto.deleted_at is None)
 
         return result

@@ -10,7 +10,7 @@ from app.modules.direcciones.schemas import (
     DireccionUpdate,
 )
 from app.modules.direcciones.unit_of_work import DireccionUnitOfWork
-from app.modules.usuarios.model import DireccionEntrega
+from app.modules.direcciones.model import DireccionEntrega
 from app.modules.usuarios.schemas import UserPublic
 
 

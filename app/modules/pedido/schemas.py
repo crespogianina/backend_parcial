@@ -90,6 +90,13 @@ class PedidoRead(BaseModel):
     creado_en: datetime
     actualizado_en: datetime
 
+class DetallePedidoRead(BaseModel):
+    producto_id: int
+    producto_nombre: str
+    cantidad: int
+    precio_snapshot: Decimal
+    subtotal: Decimal
+    personalizacion: list[int]
 
 class PedidoDetail(PedidoRead):
     direccion_snapshot: DireccionSnapshot
@@ -97,3 +104,8 @@ class PedidoDetail(PedidoRead):
     historial_estados: list[HistorialEstadoRead]
     pagos: list[PagoRead]
 
+class PedidoListResponse(BaseModel):
+    items: list[PedidoRead]
+    total: int
+    offset: int
+    limit: int
