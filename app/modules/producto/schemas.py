@@ -43,6 +43,9 @@ class ProductoCreate(ProductoBase):
 class ProductoPublic(ProductoBase):
     id: int
     activo: bool
+    categorias: List[CategoriaProductoRead] = Field(default_factory=list)
+    ingredientes: List[IngredienteProductoRead] = Field(default_factory=list)
+
 
 
 class ProductoUpdate(SQLModel):
