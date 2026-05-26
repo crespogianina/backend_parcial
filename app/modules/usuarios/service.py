@@ -1,8 +1,11 @@
+from datetime import datetime, timezone
+from typing import Optional
+
 from fastapi import HTTPException, status
 from sqlmodel import Session
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
-from app.modules.usuarios.model import Usuario
+from app.modules.usuarios.model import Usuario, UsuarioRol
 from app.modules.usuarios.schemas import UserCreate, Token, UserPublic
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork
 
@@ -19,8 +22,11 @@ class UsuarioService:
 
             if usuario is None:
                 return None
+            
+            print(usuario.model_dump())
+            print(usuario.usuario_roles)
 
-            return UserPublic.model_validate(usuario)
+            return UserPublic(**usuario.model_dump(), roles=[ur.rol_codigo for ur in usuario.usuario_roles])
 
 
     def register(self, user_in: UserCreate) -> UserPublic:
@@ -43,37 +49,45 @@ class UsuarioService:
 
             usuario = Usuario(
                 username=user_in.username,
-                full_name=user_in.full_name,
+                nombre=user_in.nombre,
+                apellido=user_in.apellido,
                 email=user_in.email,
-                hashed_password=hash_password(user_in.password),
-                role="user",
+                password_hash=hash_password(user_in.password),
             )
 
-            usuario_creado = uow.usuarios.add(usuario)
+            result = uow.usuarios.add(usuario)
 
-            return UserPublic.model_validate(usuario_creado)
+            rol_client = UsuarioRol(
+                    usuario_id=result.id,
+                    rol_codigo="CLIENT",
+                    asignado_por_id=result.id
+            )
+            
+            uow.usuarios.add_rol(rol_client)
+
+            return UserPublic(**result.model_dump(), roles=["CLIENT"])
 
 
     def authenticate(self, username: str, password: str) -> Token:
         with UsuarioUnitOfWork(self._session) as uow:
             user = uow.usuarios.get_by_username(username)
 
-            if not user or not verify_password(password, user.hashed_password):
+            if not user or not verify_password(password, user.password_hash):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Credenciales incorrectas",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
-            if user.disabled:
+            if user.deleted_at is not None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Cuenta de usuario desactivada",
                 )
 
-            access_token = create_access_token(
-                data={"sub": user.username, "role": user.role}
-            )
+            roles = [ur.rol_codigo for ur in user.usuario_roles]
+
+            access_token = create_access_token(data={"sub": user.username, "roles": roles})
             
             return Token(
                 access_token=access_token,
@@ -82,10 +96,10 @@ class UsuarioService:
             )
 
 
-    def list_all(self) -> list[UserPublic]:
+    def list_all(self, rol: Optional[str], offset: int, limit: int) -> list[UserPublic]:
         with UsuarioUnitOfWork(self._session) as uow:
-            usuarios = uow.usuarios.get_all()
-            result =[UserPublic.model_validate(u) for u in usuarios] 
+            usuarios = uow.usuarios.get_all_usuarios(rol=rol, offset=offset, limit=limit)
+            result =[UserPublic(**u.model_dump(), roles=[ur.rol_codigo for ur in u.usuario_roles]) for u in usuarios] 
 
         return result
 
@@ -100,16 +114,18 @@ class UsuarioService:
                     detail="Usuario no encontrado",
                 )
             
-            if user.disabled == disabled:
-                estado = "desactivado" if disabled else "activado"
+            user_deleted = user.deleted_at is not None
+            
+            if user_deleted == disabled:
+                estado = "desactivado" if disabled else "activo"
 
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
+                    status_code=status.HTTP_409_CONFLICT,
                     detail=f"El usuario ya se encuentra {estado}",
                 )
+
                 
-            user.disabled = disabled
+            user.deleted_at = datetime.now() if disabled else None
             updated = uow.usuarios.add(user)
-            result = UserPublic.model_validate(updated) 
-            
-        return result
+
+            return UserPublic(**updated.model_dump(), roles=[ur.rol_codigo for ur in updated.usuario_roles])

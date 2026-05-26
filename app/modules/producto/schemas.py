@@ -1,6 +1,5 @@
 from decimal import Decimal
 from typing import List, Optional
-
 from sqlmodel import ARRAY, Column, Field, SQLModel, String
 
 class CategoriaAsignar(SQLModel):
@@ -11,6 +10,20 @@ class CategoriaAsignar(SQLModel):
 class IngredienteAsignar(SQLModel):
     ingrediente_id: int
     es_removible: bool = False
+
+
+class CategoriaProductoRead(SQLModel):
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    es_principal: bool
+
+
+class IngredienteProductoRead(SQLModel):
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    es_removible: bool
 
 
 class ProductoBase(SQLModel):
@@ -30,6 +43,9 @@ class ProductoCreate(ProductoBase):
 class ProductoPublic(ProductoBase):
     id: int
     activo: bool
+    categorias: List[CategoriaProductoRead] = Field(default_factory=list)
+    ingredientes: List[IngredienteProductoRead] = Field(default_factory=list)
+
 
 
 class ProductoUpdate(SQLModel):

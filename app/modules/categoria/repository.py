@@ -16,12 +16,16 @@ class CategoriaRepository(BaseRepository[Categoria]):
         statement: Select,
         nombre: Optional[str] = None,
         descripcion: Optional[str] = None,
+        parent_id: Optional[int] = None
     ) -> Select:
         if nombre is not None:
             statement = statement.where(Categoria.nombre.ilike(f"%{nombre}%"))
 
         if descripcion is not None:
             statement = statement.where(Categoria.descripcion.ilike(f"%{descripcion}%"))
+
+        if parent_id is not None:
+            statement = statement.where(Categoria.parent_id == parent_id)
 
         return statement
     
@@ -37,10 +41,11 @@ class CategoriaRepository(BaseRepository[Categoria]):
             self, 
             nombre: Optional[str] = None, 
             descripcion: Optional[str] = None, 
+            parent_id: Optional[int] = None,
             offset: int = 0, 
-            limit: int = 20
+            limit: int = 50
         ) -> list[Categoria]:
-        statement = self._apply_filters(select(Categoria), nombre, descripcion)
+        statement = self._apply_filters(select(Categoria), nombre, descripcion, parent_id)
         statement = statement.order_by(Categoria.nombre)
 
         return list(self.session.exec(statement.offset(offset).limit(limit)).all())
@@ -52,7 +57,7 @@ class CategoriaRepository(BaseRepository[Categoria]):
         return list( self.session.exec(statement).all())
 
 
-    def count_all_categorias(self, nombre: Optional[str] = None, descripcion: Optional[str] = None) -> int:
-        statement = self._apply_filters(select(func.count()).select_from(Categoria), nombre, descripcion)
+    def count_all_categorias(self, nombre: Optional[str] = None, descripcion: Optional[str] = None, parent_id: Optional[int] = None) -> int:
+        statement = self._apply_filters(select(func.count()).select_from(Categoria), nombre, descripcion, parent_id)
 
         return self.session.exec(statement).one()

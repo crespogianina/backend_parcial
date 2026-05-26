@@ -18,7 +18,7 @@ def get_ingrediente_service(session: Session = Depends(get_session)) -> Ingredie
 @router.post("/", response_model=IngredientePublic, status_code=status.HTTP_201_CREATED, summary="Crear un ingrediente")
 def create_ingrediente(
     data: IngredienteCreate,
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> IngredientePublic:
     return svc.create_ingrediente(data)
@@ -54,7 +54,7 @@ def get_ingrediente_by_id(id: Annotated[int, Path(gt=0)], svc: IngredienteServic
 def edit_ingrediente(
     id: Annotated[int, Path(gt=0)], 
     ingrediente: IngredienteUpdate,
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> IngredientePublic:
     return svc.update(id, ingrediente)
@@ -63,7 +63,7 @@ def edit_ingrediente(
 @router.delete("/{id}", status_code=status.HTTP_200_OK, summary="Eliminar ingrediente por id")
 def eliminar_ingrediente(
     id: Annotated[int, Path(gt=0)],
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> dict:
     svc.soft_delete(id)
@@ -73,10 +73,8 @@ def eliminar_ingrediente(
 @router.post("/{id}", status_code=status.HTTP_200_OK, summary="Activar ingrediente por id")
 def activar_ingrediente(
     id: Annotated[int, Path(gt=0)],
-    _admin: Annotated[UserPublic, Depends(require_role(["admin"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> dict:
     svc.activar_ingrediente(id)
     return {"mensaje": f"Se activo correctamente el ingrediente con id {id}"} 
-
- 

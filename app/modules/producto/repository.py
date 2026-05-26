@@ -20,6 +20,7 @@ class ProductoRepository(BaseRepository[Producto]):
         nombre: Optional[str] = None,
         descripcion: Optional[str] = None,
         disponible: Optional[bool] = None,
+        categoria_id: Optional[int] = None
     ) -> Select:
         if nombre is not None:
             statement = statement.where(Producto.nombre.ilike(f"%{nombre}%"))
@@ -29,6 +30,13 @@ class ProductoRepository(BaseRepository[Producto]):
 
         if disponible is not None:
             statement = statement.where(Producto.disponible == disponible)
+
+        if categoria_id is not None:
+            statement = (
+                statement
+                .join(ProductoCategoria, ProductoCategoria.producto_id == Producto.id)
+                .where(ProductoCategoria.categoria_id == categoria_id)
+            )
 
         return statement
     
@@ -41,15 +49,27 @@ class ProductoRepository(BaseRepository[Producto]):
         return self.session.exec(statement).first()
 
 
+    def get_with_lock(self, producto_id: int) -> Producto | None:
+        statement = (
+            select(Producto)
+            .where(Producto.id == producto_id)
+            .where(Producto.deleted_at.is_(None))
+            .with_for_update()
+        )
+        
+        return self.session.exec(statement).first()
+
+
     def get_all_productos(
             self,
             nombre: Optional[str] = None, 
             descripcion: Optional[str] = None,
             disponible: Optional[bool] = None,
+            categoria_id: Optional[int] = None,
             offset: int = 0, 
-            limit: int = 20
+            limit: int = 50
         ) -> list[Producto]:
-        statement = self._apply_filters(select(Producto), nombre, descripcion, disponible)
+        statement = self._apply_filters(select(Producto), nombre, descripcion, disponible, categoria_id)
         statement = statement.offset(offset).limit(limit).order_by(Producto.nombre.desc())
 
         return list(self.session.exec(statement).all())
@@ -58,12 +78,16 @@ class ProductoRepository(BaseRepository[Producto]):
     def count_all_productos(self,
         nombre: Optional[str] = None,
         descripcion: Optional[str] = None,
-        disponible: Optional[bool] = None
+        disponible: Optional[bool] = None,
+        categoria_id: Optional[int] = None,
     ) -> int:
-        statement =self._apply_filters(select(func.count()).select_from(Producto), nombre, descripcion, disponible)
+        statement = self._apply_filters(
+            select(func.count()).select_from(Producto),
+            nombre, descripcion, disponible, categoria_id
+        )
 
         return self.session.exec(statement).one()
-    
+        
 
     def get_categorias_by_producto(self, producto_id: int) -> List[Categoria]:
         statement = (

@@ -47,7 +47,7 @@ class IngredienteService:
             detail="No se puede eliminar un ingrediente asociado a productos"
             )
 
-    # ── Casos de uso ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────
 
     def create_ingrediente(self, data: IngredienteCreate) -> IngredientePublic: 
         with IngredienteUnitOfWork(self._session) as uow:
@@ -59,6 +59,7 @@ class IngredienteService:
             result = IngredientePublic(**ingrediente.model_dump(), activo=ingrediente.deleted_at is None)
 
         return result
+
 
 
     def get_all(self, es_alergeno: bool, nombre: Optional[str] = None, descripcion: Optional[str] = None, offset: int = 0, limit: int = 20) -> IngredienteList:

@@ -1,54 +1,141 @@
 from sqlmodel import Session, select
-from app.core.database import engine,create_db_and_tables
+
+from app.core.database import engine, create_db_and_tables
 from app.core.security import hash_password
-from app.modules.usuarios.model import Usuario
+from app.modules.usuarios.model import Rol, Usuario, UsuarioRol
+from app.modules.pedido.models import EstadoPedido, FormaPago
 
+ROLES = [
+    {"codigo": "ADMIN",   "nombre": "Administrador", "descripcion": "Acceso total sin restricciones"},
+    {"codigo": "STOCK",   "nombre": "Stock",          "descripcion": "Actualiza stock y disponibilidad"},
+    {"codigo": "PEDIDOS", "nombre": "Pedidos",        "descripcion": "Avanza estados de pedidos"},
+    {"codigo": "CLIENT",  "nombre": "Cliente",        "descripcion": "Opera solo sus propios datos"},
+]
 
-USUARIOS_INICIALES = [
+USUARIOS = [
     {
-        "username":  "admin",
-        "full_name": "Administrador del Sistema",
-        "email":     "admin@example.com",
-        "password":  "Admin1234!",
-        "role":      "admin",
+        "username": "admin",
+        "nombre":   "Administrador",
+        "apellido": "Sistema",
+        "email":    "admin@example.com",
+        "password": "Admin1234!",
+        "roles":    ["ADMIN"],
     },
     {
-        "username":  "juan",
-        "full_name": "Juan Pérez",
-        "email":     "juan@example.com",
-        "password":  "Juan1234!",
-        "role":      "user",
+        "username": "juan",
+        "nombre":   "Juan",
+        "apellido": "Pérez",
+        "email":    "juan@example.com",
+        "password": "Juan1234!",
+        "roles":    ["CLIENT"],
     },
 ]
 
+ESTADOS_PEDIDO = [
+    {"codigo": "PENDIENTE",      "descripcion": "Pedido creado, esperando pago",    "orden": 1, "es_terminal": False},
+    {"codigo": "CONFIRMADO",     "descripcion": "Pago aprobado, stock decrementado","orden": 2, "es_terminal": False},
+    {"codigo": "EN_PREPARACION", "descripcion": "En cocina/preparación",            "orden": 3, "es_terminal": False},
+    {"codigo": "EN_CAMINO",      "descripcion": "En camino al cliente",             "orden": 4, "es_terminal": False},
+    {"codigo": "ENTREGADO",      "descripcion": "Entregado correctamente",          "orden": 5, "es_terminal": True},
+    {"codigo": "CANCELADO",      "descripcion": "Cancelado",                        "orden": 6, "es_terminal": True},
+]
+
+FORMAS_PAGO = [
+    {"codigo": "MP",       "descripcion": "Mercado Pago", "habilitado": True},
+    {"codigo": "EFECTIVO", "descripcion": "Efectivo",     "habilitado": True},
+]
+
+def seed_roles(session: Session) -> None:
+    print("\n── Roles ──")
+    for data in ROLES:
+        existing = session.exec(select(Rol).where(Rol.codigo == data["codigo"])).first()
+        if existing:
+            print(f"  [=] Ya existe: {data['codigo']}")
+        else:
+            session.add(Rol(**data))
+            print(f"  [+] Creado:    {data['codigo']}")
+    session.commit()
+
+
+def seed_usuarios(session: Session) -> None:
+    print("\n── Usuarios ──")
+    for data in USUARIOS:
+        existing = session.exec(
+            select(Usuario).where(Usuario.username == data["username"])
+        ).first()
+
+        if existing:
+            print(f"  [=] Ya existe: {data['username']}")
+            usuario = existing
+        else:
+            usuario = Usuario(
+                username=data["username"],
+                nombre=data["nombre"],
+                apellido=data["apellido"],
+                email=data["email"],
+                password_hash=hash_password(data["password"]),
+            )
+            session.add(usuario)
+            session.commit()
+            session.refresh(usuario)
+            print(f"  [+] Creado:    {data['username']} / {data['password']}")
+
+        for rol_codigo in data["roles"]:
+            existing_rol = session.exec(
+                select(UsuarioRol).where(
+                    UsuarioRol.usuario_id == usuario.id,
+                    UsuarioRol.rol_codigo == rol_codigo,
+                )
+            ).first()
+            if not existing_rol:
+                session.add(UsuarioRol(usuario_id=usuario.id, rol_codigo=rol_codigo))
+                print(f"      → Rol asignado: {rol_codigo}")
+            else:
+                print(f"      → Rol ya asignado: {rol_codigo}")
+
+    session.commit()
+
+
+def seed_estados_pedido(session: Session) -> None:
+    print("\n── Estados de Pedido ──")
+    for data in ESTADOS_PEDIDO:
+        existing = session.exec(
+            select(EstadoPedido).where(EstadoPedido.codigo == data["codigo"])
+        ).first()
+        if existing:
+            print(f"  [=] Ya existe: {data['codigo']}")
+        else:
+            session.add(EstadoPedido(**data))
+            print(f"  [+] Creado:    {data['codigo']}")
+    session.commit()
+
+
+def seed_formas_pago(session: Session) -> None:
+    print("\n── Formas de Pago ──")
+    for data in FORMAS_PAGO:
+        existing = session.exec(
+            select(FormaPago).where(FormaPago.codigo == data["codigo"])
+        ).first()
+        if existing:
+            print(f"  [=] Ya existe: {data['codigo']}")
+        else:
+            session.add(FormaPago(**data))
+            print(f"  [+] Creado:    {data['codigo']}")
+    session.commit()
 
 def run() -> None:
-    print("=== Seed — Seguridad JWT (PostgreSQL) ===")
+    print("=== Seed — Food Store ===")
     create_db_and_tables()
 
     with Session(engine) as session:
-        for data in USUARIOS_INICIALES:
+        seed_roles(session)
+        seed_usuarios(session)
+        seed_estados_pedido(session)
+        seed_formas_pago(session)
 
-            existing = session.exec(select(Usuario).where(Usuario.username == data["username"])).first()
-
-            if existing:
-                print(f"  [=] Ya existe: {data['username']} ({data['role']})")
-            else:
-                usuario = Usuario(
-                    username        = data["username"],
-                    full_name       = data["full_name"],
-                    email           = data["email"],
-                    hashed_password = hash_password(data["password"]),
-                    role            = data["role"],
-                )
-                session.add(usuario)
-                print(f"  [+] Creado:    {data['username']} / {data['password']}  (role={data['role']})")
-
-        session.commit()
-
-    print("\nUsuarios disponibles para pruebas:")
-    print("  admin / Admin1234!  → role=admin  (acceso total)")
-    print("  juan  / Juan1234!   → role=user   (acceso básico)")
+    print("\n── Usuarios disponibles ──")
+    print("  admin / Admin1234!  → ADMIN")
+    print("  juan  / Juan1234!   → CLIENT")
     print()
 
 
