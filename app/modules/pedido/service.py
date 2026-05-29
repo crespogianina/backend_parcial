@@ -126,7 +126,7 @@ class PedidoService:
                 "personalizacion": item.personalizacion,
             })
 
-            return detalles_data
+        return detalles_data
 
     def _to_pedido_detail(self, pedido: Pedido) -> PedidoDetail:
         return PedidoDetail(
