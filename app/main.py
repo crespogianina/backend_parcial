@@ -18,7 +18,6 @@ async def lifespan(app: FastAPI):
     yield
 
 
-
 app = FastAPI(
     title="Integrador",
     lifespan=lifespan,

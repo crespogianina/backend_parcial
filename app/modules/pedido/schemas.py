@@ -47,7 +47,7 @@ class FormaPagoResumen(SQLModel):
 
 class PedidoCreate(SQLModel):
     items: list[ItemPedidoRequest] = Field(min_length=1)
-    direccion_id: int
+    direccion_id: Optional[int] = None 
     forma_pago_codigo: str
 
 

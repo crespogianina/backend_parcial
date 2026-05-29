@@ -52,12 +52,15 @@ class DireccionRepository(BaseRepository[DireccionEntrega]):
 
     def clear_principal_for_user(self, usuario_id: int) -> None:
         statement = self._active_for_user(usuario_id).where(DireccionEntrega.es_principal.is_(True))
+
         for direccion in self.session.exec(statement).all():
             direccion.es_principal = False
             self.session.add(direccion)
+
         self.session.flush()
 
 
     def get_first_active_for_user(self, usuario_id: int) -> DireccionEntrega | None:
         statement = self._active_for_user(usuario_id).order_by(DireccionEntrega.created_at.asc())
+        
         return self.session.exec(statement).first()

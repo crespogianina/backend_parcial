@@ -37,6 +37,7 @@ class UsuarioRepository(BaseRepository[Usuario]):
                 statement
                 .join(UsuarioRol, UsuarioRol.usuario_id == Usuario.id)
                 .where(UsuarioRol.rol_codigo == rol)
+                .distinct()
             )
 
         return list(self.session.exec(statement.offset(offset).limit(limit)).all())

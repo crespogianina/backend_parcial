@@ -1,4 +1,3 @@
-# app/modules/pedido/router.py
 from datetime import date
 from typing import Optional
 from typing_extensions import Annotated

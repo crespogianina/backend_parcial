@@ -72,5 +72,4 @@ class UsuarioRol(SQLModel, table=True):
             "primaryjoin": "UsuarioRol.asignado_por_id == Usuario.id",
         }
     )
-
     rol: Optional["Rol"] = Relationship(back_populates="usuario_roles")

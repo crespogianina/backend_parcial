@@ -13,6 +13,8 @@ from app.modules.producto.models import Producto
 from app.modules.producto.service import ProductoService
 from app.modules.usuarios.schemas import UserPublic
 
+FORMAS_PAGO_CON_ENVIO = {"MP"}
+
 ESTADO = {
     "PENDIENTE": "PENDIENTE",
     "CONFIRMADO": "CONFIRMADO",
@@ -55,47 +57,76 @@ class PedidoService:
 
     # ── Helpers privados ──────────────────────────────────────────────────────
 
-    def _validar_y_construir_detalles(self, items: list, uow: PedidoUnitOfWork) -> list[dict]:
-        detalles_data = []
+    def _validar_forma_pago(self, forma_pago_codigo: str, uow: PedidoUnitOfWork) -> None:
+        forma_pago = uow.formas_pago.get_by_id(forma_pago_codigo)
 
+        if not forma_pago:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Forma de pago '{forma_pago_codigo}' no encontrada",
+            )
+
+        if not forma_pago.habilitado:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"La forma de pago '{forma_pago_codigo}' no está habilitada",
+            )
+        
+    def _validar_direccion_requerida(self, forma_pago_codigo: str, direccion_id: Optional[int]) -> None:
+        if forma_pago_codigo in FORMAS_PAGO_CON_ENVIO and direccion_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"La forma de pago '{forma_pago_codigo}' requiere una dirección de entrega.",
+            )
+        
+
+
+    def _validar_items(self, items: list, uow: PedidoUnitOfWork) -> None:
         for item in items:
-            producto_locked = uow.productos.get_with_lock(item.producto_id)
+            producto = uow.productos.get_with_lock(item.producto_id)
 
-            if producto_locked is None or producto_locked.deleted_at is not None:
+            if producto is None or producto.deleted_at is not None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Producto con id {item.producto_id} no encontrado."
                 )
-            
-            if not producto_locked.disponible:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El producto '{producto_locked.nombre}' no está disponible."
-                )
-            
-            if producto_locked.stock_cantidad  < item.cantidad:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Stock insuficiente para '{producto_locked.nombre}'. "
-                    f"Disponible: {producto_locked.stock_cantidad}, solicitado: {item.cantidad}."
-                )
-            
-            precio_snapshot: Decimal = producto_locked.precio_base
-            subtotal = precio_snapshot * item.cantidad
 
-            producto_locked.stock_cantidad -= item.cantidad
-            uow.productos.add(producto_locked)
+            if not producto.disponible:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"El producto '{producto.nombre}' no está disponible."
+                )
+
+            if producto.stock_cantidad < item.cantidad:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Stock insuficiente para '{producto.nombre}'. "
+                        f"Disponible: {producto.stock_cantidad}, solicitado: {item.cantidad}."
+                )
+
+
+    def _construir_detalles(self, items: list, uow: PedidoUnitOfWork) -> list[dict]:
+        detalles_data = []
+
+        for item in items:
+            producto = uow.productos.get_with_lock(item.producto_id)
+            
+            precio_snapshot: Decimal = producto.precio_base
+            subtotal = precio_snapshot * item.cantidad
+            producto.stock_cantidad -= item.cantidad
+
+            uow.productos.add(producto)
 
             detalles_data.append({
-                "producto_id":      producto_locked.id,
-                "nombre_snapshot":  producto_locked.nombre,   
-                "cantidad":         item.cantidad,
-                "precio_snapshot":  precio_snapshot,
-                "subtotal_snap":    subtotal,                 
-                "personalizacion":  item.personalizacion,
-            })            
+                "producto_id":     producto.id,
+                "nombre_snapshot": producto.nombre,
+                "cantidad":        item.cantidad,
+                "precio_snapshot": precio_snapshot,
+                "subtotal_snap":   subtotal,
+                "personalizacion": item.personalizacion,
+            })
 
-        return detalles_data
+            return detalles_data
 
     def _to_pedido_detail(self, pedido: Pedido) -> PedidoDetail:
         return PedidoDetail(
@@ -164,13 +195,21 @@ class PedidoService:
         with PedidoUnitOfWork(self._session) as uow:
             self._validar_forma_pago(data.forma_pago_codigo, uow)
 
+            self._validar_direccion_requerida(data.forma_pago_codigo, data.direccion_id)
+
             if  data.direccion_id is not None:
                 self._validar_direccion(data.direccion_id, usuario_id, uow)
                 
-            detalles_data = self._validar_y_construir_detalles(data.items, uow)
+            self._validar_items(data.items, uow)
+            detalles_data = self._construir_detalles(data.items, uow)
 
             subtotal = sum(i["subtotal_snap"] for i in detalles_data)
-            costo_envio = self._calcular_costo_envio(subtotal)
+            costo_envio = (
+                self._calcular_costo_envio(subtotal)
+                if data.direccion_id is not None
+                else Decimal("0")
+            )
+
             total = subtotal + costo_envio
 
             pedido = uow.pedidos.add(Pedido(
@@ -237,20 +276,20 @@ class PedidoService:
 
     def obtener_pedido(self, pedido_id: int, usuario: UserPublic) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
-            rol_permitido = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
-
-            if not rol_permitido and pedido.usuario_id != usuario.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="No tenés permiso para ver este pedido",
-                )
-        
             pedido = uow.pedidos.get_by_id(pedido_id)
 
             if pedido is None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Pedido {pedido_id} no encontrado",
+                )
+
+            rol_permitido = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
+
+            if not rol_permitido and pedido.usuario_id != usuario.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tenés permiso para ver este pedido",
                 )
 
             return self._to_pedido_detail(pedido)

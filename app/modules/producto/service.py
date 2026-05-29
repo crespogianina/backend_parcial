@@ -108,7 +108,7 @@ class ProductoService:
             self._validate_no_duplicate_ids(ingrediente_ids, "ingredientes")
 
         with ProductoUnitOfWork(self._session) as uow:
-            self._validar_categorias_existen(uow,categoria_ids) 
+            self._validar_categorias_existen(uow, categoria_ids) 
 
             if ingrediente_ids:
                 self._validar_ingredientes_existen(uow, ingrediente_ids)
@@ -241,7 +241,7 @@ class ProductoService:
             if not producto:
                 raise HTTPException(status_code=404, detail=f"Producto de id:{producto_id} no encontrado")
 
-            if not producto.deleted_at:
+            if producto.deleted_at is not None:
                 raise HTTPException(status_code=409, detail=f"El producto de id:{producto_id} se encuentra eliminado")
 
 
