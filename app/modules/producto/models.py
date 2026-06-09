@@ -27,7 +27,7 @@ class ProductoCategoria(SQLModel, table=True):
 class ProductoIngrediente(SQLModel, table=True):
     __tablename__ = "producto_ingrediente"
 
-    unidad_medida_id: Optional[int] = Field(default=None, foreign_key="unidad_medida.id", nullable=False)
+    unidad_medida_id: int = Field(foreign_key="unidad_medida.id", nullable=False)
 
     producto_id: int= Field(foreign_key="productos.id",primary_key=True)
     ingrediente_id: int= Field(foreign_key="ingredientes.id",primary_key=True)
@@ -57,7 +57,7 @@ class Producto(SQLModel, table=True):
     )
     stock_cantidad: int = Field(default=0, ge=0,nullable=False)
     disponible: bool = Field(default=True, nullable=False,index=True)
-
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     deleted_at: Optional[datetime] = Field(default=None)
@@ -83,9 +83,9 @@ class UnidadMedida(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    nombre: str = Field(min_length=2, max_length=50, index=True, unique=True, nullable=False)
-    simbolo: str = Field(min_length=2, max_length=10, index=True, unique=True, nullable=False)
-    tipo: str = Field(min_length=2, max_length=20, index=True, nullable=False)
+    nombre: str = Field(min_length=1, max_length=50, index=True, unique=True, nullable=False)
+    simbolo: str = Field(min_length=1, max_length=10, index=True, unique=True, nullable=False)
+    tipo: str = Field(min_length=1, max_length=20, index=True, nullable=False)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     deleted_at: Optional[datetime] = Field(default=None)

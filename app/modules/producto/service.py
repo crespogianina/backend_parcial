@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session
 from .models import Producto, ProductoCategoria, ProductoIngrediente
-from .schemas import CategoriaAsignar, IngredienteAsignar, ProductoCreate, ProductoPublic, ProductoUpdate, ProductoList
+from .schemas import CategoriaAsignar, CategoriaProductoRead, IngredienteAsignar, IngredienteProductoRead, ProductoCreate, ProductoPublic, ProductoUpdate, ProductoList, UnidadMedidaProductoRead
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from .unit_of_work import ProductoUnitOfWork
@@ -73,30 +73,6 @@ class ProductoService:
                 )
 
 
-    def _reemplazar_categorias(self, uow: ProductoUnitOfWork, producto_id: int, categoria_ids: list[int]) -> None:
-        uow.productos.delete_categorias_by_producto(producto_id)
-
-        for categoria_id in categoria_ids:
-            link = ProductoCategoria(
-                producto_id=producto_id,
-                categoria_id=categoria_id,
-                es_principal=False,
-            )
-            uow.productos.add(link)
-
-
-    def _reemplazar_ingredientes(self, uow: ProductoUnitOfWork, producto_id: int, ingrediente_ids: list[int]) -> None:
-        uow.productos.delete_ingredientes_by_producto(producto_id)
-
-        for ingrediente_id in ingrediente_ids:
-            link = ProductoIngrediente(
-                producto_id=producto_id,
-                ingrediente_id=ingrediente_id,
-                es_removible=False,
-            )
-            uow.productos.add(link)                
-    
-
     def _validar_unidad_medida(self, uow: ProductoUnitOfWork, unidad_medida_id: int) -> None:
         if not uow.productos.get_unidad_medida(unidad_medida_id):
             raise HTTPException(
@@ -126,13 +102,14 @@ class ProductoService:
     def _reemplazar_ingredientes(self, uow: ProductoUnitOfWork, producto_id: int, ingredientes: list[IngredienteAsignar]) -> None:
         uow.productos.delete_ingredientes_by_producto(producto_id)
 
-        for ing in ingredientes:
+        for ingrediente in ingredientes:
             uow.productos.add(
                 ProductoIngrediente(
                     producto_id=producto_id,
-                    ingrediente_id=ing.ingrediente_id,
-                    es_removible=ing.es_removible,
-                    unidad_medida_id=ing.unidad_medida_id
+                    ingrediente_id=ingrediente.ingrediente_id,
+                    es_removible=ingrediente.es_removible,
+                    unidad_medida_id=ingrediente.unidad_medida_id,
+                    cantidad= ingrediente.cantidad
                 )
             )
 
@@ -150,6 +127,55 @@ class ProductoService:
                 continue
 
             unidades = int(ingrediente.stock_cantidad / ing.cantidad)
+            unidades_posibles.append(unidades)
+
+        return min(unidades_posibles) if unidades_posibles else 0
+    
+    
+    def _to_producto_public(self, producto: Producto) -> ProductoPublic:
+        unidad_medida = (
+            UnidadMedidaProductoRead.model_validate(producto.unidad_medida)
+            if producto.unidad_medida
+            else None
+        )
+
+        categorias = [
+            CategoriaProductoRead(
+                id=pc.categoria.id,
+                nombre=pc.categoria.nombre,
+                descripcion=pc.categoria.descripcion,
+                es_principal=pc.es_principal,
+            )
+            for pc in producto.producto_categorias
+        ]
+
+        ingredientes = [
+            IngredienteProductoRead(
+                id=pi.ingrediente.id,
+                nombre=pi.ingrediente.nombre,
+                descripcion=pi.ingrediente.descripcion,
+                es_removible=pi.es_removible,
+            )
+            for pi in producto.producto_ingredientes
+        ]
+
+        return ProductoPublic(
+            **producto.model_dump(),
+            activo=producto.deleted_at is None,
+            unidad_medida=unidad_medida,
+            categorias=categorias,
+            ingredientes=ingredientes,
+        )
+    
+
+    def _recalcular_stock_desde_links(self, producto: Producto) -> int:
+        unidades_posibles = []
+
+        for pi in producto.producto_ingredientes:
+            if not pi.ingrediente or pi.cantidad <= 0:
+                continue
+
+            unidades = int(pi.ingrediente.stock_cantidad / pi.cantidad)
             unidades_posibles.append(unidades)
 
         return min(unidades_posibles) if unidades_posibles else 0
@@ -177,7 +203,7 @@ class ProductoService:
             producto = Producto.model_validate(data.model_dump(exclude={"categorias", "ingredientes"}))
             producto.stock_cantidad = 0
             uow.productos.add(producto)
-            self._session.flush()  
+            self._session.flush()
 
             self._reemplazar_categorias(uow, producto.id, data.categorias)
             
@@ -186,11 +212,10 @@ class ProductoService:
             if data.ingredientes:
                 self._reemplazar_ingredientes(uow, producto.id, data.ingredientes)
 
-            producto.stock_cantidad = self.calcular_stock(uow,data.ingredientes)
+            producto.stock_cantidad = self._calcular_stock(uow,data.ingredientes)
 
             uow.productos.add(producto)
-            self._session.refresh(producto)
-            result = ProductoPublic(**producto.model_dump(), activo=producto.deleted_at is None)
+            result = self._to_producto_public(producto)
 
         return result
 
@@ -209,8 +234,7 @@ class ProductoService:
             total = uow.productos.count_all_productos(nombre, descripcion, disponible, categoria_id)
 
             result = ProductoList(
-                data = [ProductoPublic(**i.model_dump(), activo = i.deleted_at is None)
-                        for i in productos],
+                data=[self._to_producto_public(p) for p in productos],
                 total=total,
             )
             
@@ -220,8 +244,8 @@ class ProductoService:
     def get_by_id(self, producto_id: int) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:
             producto = self._get_or_404(uow, producto_id)
-            result = ProductoPublic(**producto.model_dump(), activo=producto.deleted_at is None)
 
+            result = self._to_producto_public(producto)
         return result
 
 
@@ -231,6 +255,9 @@ class ProductoService:
 
             if data.nombre and data.nombre != producto.nombre:
                 self._assert_nombre_unique(uow, data.nombre)
+
+            if data.unidad_medida_id is not None:
+                self._validar_unidad_medida(uow, data.unidad_medida_id)
 
             patch = data.model_dump(exclude_unset=True, exclude={"categorias", "ingredientes"})
 
@@ -243,8 +270,6 @@ class ProductoService:
                 self._validate_no_duplicate_ids(categoria_ids, "categorías")
                 self._validar_categorias_existen(uow, categoria_ids)
 
-                uow.productos.delete_categorias_by_producto(producto_id)
-
                 self._reemplazar_categorias(uow, producto.id, data.categorias)
 
             if data.ingredientes is not None:
@@ -253,15 +278,13 @@ class ProductoService:
                 self._validate_no_duplicate_ids(ingrediente_ids, "ingredientes")
                 self._validar_ingredientes_existen(uow, ingrediente_ids)
 
-                uow.productos.delete_ingredientes_by_producto(producto_id)
-
                 self._reemplazar_ingredientes(uow, producto.id, data.ingredientes)
                 
-            producto.stock_cantidad = self._calcular_stock(uow, data.ingredientes)
+                producto.stock_cantidad = self._calcular_stock(uow, data.ingredientes)
             
             producto.updated_at = datetime.utcnow()
             uow.productos.add(producto)
-            result = ProductoPublic.model_validate(producto)
+            result = self._to_producto_public(producto)
 
         return result
     
@@ -299,7 +322,7 @@ class ProductoService:
             producto.disponible = disponible
             uow.productos.add(producto)
             
-            return ProductoPublic.model_validate(producto)  
+            return self._to_producto_public(producto)
 
 
     def obtener_categorias_producto(self, producto_id: int) -> List[CategoriaPublic]:
@@ -316,3 +339,63 @@ class ProductoService:
             ingredientes = uow.productos.get_ingredientes_by_producto(producto_id)
 
             return [IngredientePublic.model_validate(ingrediente)for ingrediente in ingredientes]
+        
+    def asociar_ingrediente(self, producto_id: int, data: IngredienteAsignar) -> ProductoPublic:
+        with ProductoUnitOfWork(self._session) as uow:
+            producto = self._get_or_404(uow, producto_id)
+
+            self._validar_ingredientes_existen(uow, [data.ingrediente_id])
+            self._validar_unidad_medida(uow, data.unidad_medida_id)
+
+            ya_asociado = any(
+                pi.ingrediente_id == data.ingrediente_id
+                for pi in producto.producto_ingredientes
+            )
+            
+            if ya_asociado:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El ingrediente {data.ingrediente_id} ya está asociado al producto {producto_id}",
+                )
+
+            uow.productos.add(
+                ProductoIngrediente(
+                    producto_id=producto_id,
+                    ingrediente_id=data.ingrediente_id,
+                    es_removible=data.es_removible,
+                    unidad_medida_id=data.unidad_medida_id,
+                    cantidad=data.cantidad,
+                )
+            )
+            
+            self._session.flush()            
+            self._session.refresh(producto)
+
+            producto.stock_cantidad = self._recalcular_stock_desde_links(producto)
+            producto.updated_at = datetime.now(timezone.utc)
+            uow.productos.add(producto)
+
+            result = self._to_producto_public(producto)
+
+        return result
+
+
+    def actualizar_imagenes(self, producto_id: int, imagenes: List[str]) -> ProductoPublic:
+        imagenes = [url.strip() for url in imagenes if url.strip()]
+
+        if len(imagenes) != len(set(imagenes)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se permiten imágenes duplicadas",
+            )
+
+        with ProductoUnitOfWork(self._session) as uow:
+            producto = self._get_or_404(uow, producto_id)
+
+            producto.imagenes_url = imagenes
+            producto.updated_at = datetime.now(timezone.utc)
+            uow.productos.add(producto)
+
+            result = self._to_producto_public(producto)
+
+        return result
