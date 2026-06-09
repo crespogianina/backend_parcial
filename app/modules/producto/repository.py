@@ -5,7 +5,7 @@ from app.core.repository import BaseRepository
 from app.modules.producto.models import Producto, ProductoCategoria,ProductoIngrediente, UnidadMedida
 from app.modules.categoria.models import Categoria
 from app.modules.ingrediente.models import Ingrediente 
-
+from sqlalchemy.orm import selectinload
 
 class ProductoRepository(BaseRepository[Producto]):
     
@@ -69,8 +69,19 @@ class ProductoRepository(BaseRepository[Producto]):
             offset: int = 0, 
             limit: int = 50
         ) -> list[Producto]:
-        statement = self._apply_filters(select(Producto), nombre, descripcion, disponible, categoria_id)
-        statement = statement.offset(offset).limit(limit).order_by(Producto.nombre.desc())
+        statement = self._apply_filters(
+            select(Producto),
+            nombre,
+            descripcion,
+            disponible,
+            categoria_id
+        ).options(
+            selectinload(Producto.unidad_medida),
+            selectinload(Producto.producto_categorias).selectinload(ProductoCategoria.categoria),
+            selectinload(Producto.producto_ingredientes).selectinload(ProductoIngrediente.ingrediente),
+        )
+        
+        statement = statement.offset(offset).limit(limit).order_by(Producto.nombre.asc())
 
         return list(self.session.exec(statement).all())
 
