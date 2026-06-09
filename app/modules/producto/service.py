@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session
 from .models import Producto, ProductoCategoria, ProductoIngrediente
-from .schemas import ProductoCreate, ProductoPublic, ProductoUpdate, ProductoList
+from .schemas import CategoriaAsignar, IngredienteAsignar, ProductoCreate, ProductoPublic, ProductoUpdate, ProductoList
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from .unit_of_work import ProductoUnitOfWork
@@ -95,7 +95,65 @@ class ProductoService:
                 es_removible=False,
             )
             uow.productos.add(link)                
-                
+    
+
+    def _validar_unidad_medida(self, uow: ProductoUnitOfWork, unidad_medida_id: int) -> None:
+        if not uow.productos.get_unidad_medida(unidad_medida_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Unidad de medida con id={unidad_medida_id} no encontrada",
+            )
+        
+
+    def _validar_unidades_medida_ingredientes(self, uow: ProductoUnitOfWork, ingredientes: list[IngredienteAsignar]) -> None:
+        for ing in ingredientes:
+            self._validar_unidad_medida(uow, ing.unidad_medida_id)
+            
+
+    def _reemplazar_categorias(self, uow: ProductoUnitOfWork, producto_id: int, categorias: list[CategoriaAsignar]) -> None:
+        uow.productos.delete_categorias_by_producto(producto_id)
+
+        for cat in categorias:
+            uow.productos.add(
+                ProductoCategoria(
+                    producto_id=producto_id,
+                    categoria_id=cat.categoria_id,
+                    es_principal=cat.es_principal,
+                )
+            )
+
+
+    def _reemplazar_ingredientes(self, uow: ProductoUnitOfWork, producto_id: int, ingredientes: list[IngredienteAsignar]) -> None:
+        uow.productos.delete_ingredientes_by_producto(producto_id)
+
+        for ing in ingredientes:
+            uow.productos.add(
+                ProductoIngrediente(
+                    producto_id=producto_id,
+                    ingrediente_id=ing.ingrediente_id,
+                    es_removible=ing.es_removible,
+                    unidad_medida_id=ing.unidad_medida_id
+                )
+            )
+
+
+    def _calcular_stock(self, uow: ProductoUnitOfWork, ingredientes: list[IngredienteAsignar]) -> int:
+        if not ingredientes:
+            return 0
+
+        unidades_posibles = []
+
+        for ing in ingredientes:
+            ingrediente = uow.ingredientes.get_by_id(ing.ingrediente_id)
+
+            if not ingrediente or ing.cantidad <= 0:
+                continue
+
+            unidades = int(ingrediente.stock_cantidad / ing.cantidad)
+            unidades_posibles.append(unidades)
+
+        return min(unidades_posibles) if unidades_posibles else 0
+
     # ── Casos de uso ─────────────────────────────────────────────────────────
 
     def create(self, data: ProductoCreate) -> ProductoPublic:
@@ -108,32 +166,30 @@ class ProductoService:
             self._validate_no_duplicate_ids(ingrediente_ids, "ingredientes")
 
         with ProductoUnitOfWork(self._session) as uow:
+            self._assert_nombre_unique(uow, data.nombre)
+            self._validar_unidad_medida(uow, data.unidad_medida_id)
+
             self._validar_categorias_existen(uow, categoria_ids) 
 
             if ingrediente_ids:
                 self._validar_ingredientes_existen(uow, ingrediente_ids)
 
-            self._assert_nombre_unique(uow, data.nombre)
             producto = Producto.model_validate(data.model_dump(exclude={"categorias", "ingredientes"}))
+            producto.stock_cantidad = 0
             uow.productos.add(producto)
             self._session.flush()  
 
-            for cat in data.categorias:
-                link = ProductoCategoria(
-                    producto_id=producto.id,
-                    categoria_id=cat.categoria_id,
-                    es_principal=cat.es_principal,
-                )
-                uow.productos.add(link)
+            self._reemplazar_categorias(uow, producto.id, data.categorias)
+            
+            self._validar_unidades_medida_ingredientes(uow, data.ingredientes)
 
-            for ing in (data.ingredientes or []):
-                link = ProductoIngrediente(
-                    producto_id=producto.id,
-                    ingrediente_id=ing.ingrediente_id,
-                    es_removible=ing.es_removible,
-                )
-                uow.productos.add(link)
+            if data.ingredientes:
+                self._reemplazar_ingredientes(uow, producto.id, data.ingredientes)
 
+            producto.stock_cantidad = self.calcular_stock(uow,data.ingredientes)
+
+            uow.productos.add(producto)
+            self._session.refresh(producto)
             result = ProductoPublic(**producto.model_dump(), activo=producto.deleted_at is None)
 
         return result
@@ -189,13 +245,7 @@ class ProductoService:
 
                 uow.productos.delete_categorias_by_producto(producto_id)
 
-                for cat in data.categorias:
-                    link = ProductoCategoria(
-                        producto_id=producto_id,
-                        categoria_id=cat.categoria_id,
-                        es_principal=cat.es_principal,
-                    )
-                    uow.productos.add(link)
+                self._reemplazar_categorias(uow, producto.id, data.categorias)
 
             if data.ingredientes is not None:
                 ingrediente_ids = [ing.ingrediente_id for ing in data.ingredientes]
@@ -205,14 +255,10 @@ class ProductoService:
 
                 uow.productos.delete_ingredientes_by_producto(producto_id)
 
-                for ing in data.ingredientes:
-                    link = ProductoIngrediente(
-                        producto_id=producto_id,
-                        ingrediente_id=ing.ingrediente_id,
-                        es_removible=ing.es_removible,
-                    )
-                    uow.productos.add(link)
-
+                self._reemplazar_ingredientes(uow, producto.id, data.ingredientes)
+                
+            producto.stock_cantidad = self._calcular_stock(uow, data.ingredientes)
+            
             producto.updated_at = datetime.utcnow()
             uow.productos.add(producto)
             result = ProductoPublic.model_validate(producto)

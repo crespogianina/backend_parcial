@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy import Select
 from sqlmodel import Session, func, select
 from app.core.repository import BaseRepository
-from app.modules.producto.models import Producto, ProductoCategoria,ProductoIngrediente
+from app.modules.producto.models import Producto, ProductoCategoria,ProductoIngrediente, UnidadMedida
 from app.modules.categoria.models import Categoria
 from app.modules.ingrediente.models import Ingrediente 
 
@@ -133,3 +133,7 @@ class ProductoRepository(BaseRepository[Producto]):
             self.session.delete(link)
 
         self.session.flush()
+
+    def get_unidad_medida(self, unidad_medida_id: int) -> UnidadMedida:
+        return self.session.get(UnidadMedida, unidad_medida_id)
+        

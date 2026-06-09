@@ -46,11 +46,44 @@ class IngredienteService:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se puede eliminar un ingrediente asociado a productos"
             )
+        
+        
+    def validate_unidad_medida(self, unidad_medida_id: int, uow: IngredienteUnitOfWork) -> None:
+        unidad_medida = uow.productos.get_unidad_medida(unidad_medida_id)
+
+        if not unidad_medida:
+            raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No se encontro ninguna unidad de medida con ese id {unidad_medida_id}"
+            )
+
+
+    def actualizar_productos_stock(self, uow: IngredienteUnitOfWork, ingrediente_id: int) -> None:
+        relaciones = uow.ingredientes.obtener_productos_asociados(ingrediente_id)
+        productos_afectados = {r.producto_id for r in relaciones}
+
+        for producto_id in productos_afectados:
+            relaciones_producto = uow.ingredientes.get_ingredientes_de_producto(producto_id)
+
+            unidades_posibles = []
+
+            for pi in relaciones_producto:
+                ingrediente = uow.ingredientes.get_by_id(pi.ingrediente_id)
+
+                if not ingrediente or pi.cantidad <= 0:
+                    continue
+
+                unidades = int(ingrediente.stock_cantidad / pi.cantidad)
+                unidades_posibles.append(unidades)
+
+            nuevo_stock = min(unidades_posibles) if unidades_posibles else 0
+            uow.ingredientes.actualizar_stock_producto(producto_id, nuevo_stock)
 
     # ─────────────────────────────────────────────────────────
 
     def create_ingrediente(self, data: IngredienteCreate) -> IngredientePublic: 
         with IngredienteUnitOfWork(self._session) as uow:
+            self.validate_unidad_medida(data.unidad_medida_id, uow )
             self._assert_nombre_unique(uow, data.nombre)
 
             ingrediente = Ingrediente.model_validate(data)
@@ -92,12 +125,18 @@ class IngredienteService:
                 self._assert_nombre_unique(uow, data.nombre)
 
             patch = data.model_dump(exclude_unset=True)
+            stock_anterior = ingrediente.stock_cantidad
 
             for field, value in patch.items():
                 setattr(ingrediente, field, value)
 
             ingrediente.updated_at = datetime.utcnow()
             uow.ingredientes.add(ingrediente)
+            self._session.flush()
+
+            if data.stock_cantidad is not None and data.stock_cantidad != stock_anterior:
+                self.actualizar_productos_stock(uow, ingrediente_id)
+
             result = IngredientePublic(**ingrediente.model_dump(), activo=ingrediente.deleted_at is None)
 
         return result
@@ -131,7 +170,7 @@ class IngredienteService:
             if not ingrediente.deleted_at:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"El ingrediente de id:{id} ya se encuentra activado",
+                    detail=f"El ingrediente de id:{ingrediente_id} ya se encuentra activado",
                 )
             
             ingrediente.deleted_at = None

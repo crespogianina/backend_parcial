@@ -1,8 +1,12 @@
+from datetime import datetime, timezone
+
 from sqlmodel import Session, func, select
 from typing import Optional
 from app.core.repository import BaseRepository
 from app.modules.ingrediente.models import Ingrediente
 from sqlalchemy import Select
+
+from app.modules.producto.models import Producto, ProductoIngrediente
 
 class IngredienteRepository(BaseRepository[Ingrediente]):
     def __init__(self, session: Session) -> None:
@@ -58,3 +62,30 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
         ) -> int:
         statement = self._apply_filters(select(func.count()).select_from(Ingrediente), nombre, descripcion, es_alergeno)
         return self.session.exec(statement).one()
+
+
+    def obtener_productos_asociados(self, ingrediente_id: int) -> list[ProductoIngrediente]:
+        return self._session.exec(
+            select(ProductoIngrediente)
+            .where(ProductoIngrediente.ingrediente_id == ingrediente_id)
+        ).all()
+
+
+    def get_ingredientes_de_producto(self, producto_id: int) -> list[ProductoIngrediente]:
+        return self._session.exec(
+            select(ProductoIngrediente)
+            .where(ProductoIngrediente.producto_id == producto_id)
+        ).all()
+
+
+    def get_by_id_con_stock(self, ingrediente_id: int) -> Optional[Ingrediente]:
+        return self._session.get(Ingrediente, ingrediente_id)
+
+
+    def actualizar_stock_producto(self, producto_id: int, nuevo_stock: int) -> None:
+        producto = self._session.get(Producto, producto_id)
+        
+        if producto:
+            producto.stock_cantidad = nuevo_stock
+            producto.updated_at = datetime.now(timezone.utc)
+            self._session.add(producto)

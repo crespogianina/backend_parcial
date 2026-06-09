@@ -43,6 +43,16 @@ ESTADOS_PEDIDO = [
 FORMAS_PAGO = [
     {"codigo": "MP",       "descripcion": "Mercado Pago", "habilitado": True},
     {"codigo": "EFECTIVO", "descripcion": "Efectivo",     "habilitado": True},
+    {"codigo": "TRANSFERENCIA", "descripcion": "Transferencia",     "habilitado": True},
+]
+
+UNIDADES_MEDIDA = [
+    {"nombre": "Kilogramo", "simbolo": "kg",  "tipo": "peso"},
+    {"nombre": "Gramo",     "simbolo": "g",   "tipo": "peso"},
+    {"nombre": "Litro",     "simbolo": "L",   "tipo": "volumen"},
+    {"nombre": "Mililitro", "simbolo": "ml",  "tipo": "volumen"},
+    {"nombre": "Unidad",    "simbolo": "ud",  "tipo": "contable"},
+    {"nombre": "Porción",   "simbolo": "porc","tipo": "contable"},
 ]
 
 def seed_roles(session: Session) -> None:

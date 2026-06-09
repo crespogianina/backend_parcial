@@ -2,9 +2,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Optional
 from sqlmodel import Relationship, SQLModel, Field
-
-if TYPE_CHECKING:
-    from app.modules.producto.models import ProductoIngrediente
+from app.modules.producto.models import ProductoIngrediente, UnidadMedida
 
 
 class Ingrediente(SQLModel, table=True):
@@ -12,9 +10,12 @@ class Ingrediente(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
+    unidad_medida_id: int = Field(foreign_key="unidad_medida.id", nullable=False)
+
     nombre: str = Field(min_length=2, max_length=100, index=True,nullable=False, unique=True)
     descripcion: Optional[str] = Field(default=None)
     es_alergeno: bool = Field(default=False, nullable=False)
+    stock_cantidad: int= Field(default=0, ge=0, nullable=False)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
@@ -23,3 +24,4 @@ class Ingrediente(SQLModel, table=True):
     producto_ingredientes: List["ProductoIngrediente"] = Relationship(
         back_populates="ingrediente"
     )
+    unidad_medida: UnidadMedida = Relationship(back_populates="ingredientes")

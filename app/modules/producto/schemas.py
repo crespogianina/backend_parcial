@@ -1,4 +1,3 @@
-from decimal import Decimal
 from typing import List, Optional
 from sqlmodel import ARRAY, Column, Field, SQLModel, String
 
@@ -10,6 +9,7 @@ class CategoriaAsignar(SQLModel):
 class IngredienteAsignar(SQLModel):
     ingrediente_id: int
     es_removible: bool = False
+    unidad_medida_id: int 
 
 
 class CategoriaProductoRead(SQLModel):
@@ -31,8 +31,9 @@ class ProductoBase(SQLModel):
     descripcion: Optional[str] = Field(default=None)
     precio_base: float  = Field(ge=0)
     imagenes_url: Optional[list[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
-    stock_cantidad: int = Field(default=0, ge=0)
+    # stock_cantidad: int = Field(default=0, ge=0)
     disponible: bool = Field(default=True)
+    unidad_medida_id: int= Field(gt=0) 
 
 
 class ProductoCreate(ProductoBase):
@@ -45,7 +46,6 @@ class ProductoPublic(ProductoBase):
     activo: bool
     categorias: List[CategoriaProductoRead] = Field(default_factory=list)
     ingredientes: List[IngredienteProductoRead] = Field(default_factory=list)
-
 
 
 class ProductoUpdate(SQLModel):
