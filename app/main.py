@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import create_db_and_tables
 from app.modules.producto.router import router as producto_router
@@ -30,10 +30,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+api_v1 = APIRouter(prefix="/api/v1")
 
-app.include_router(usuario_router, prefix="/usuario", tags=["usuarios"])
-app.include_router(categoria_router, prefix="/categorias", tags=["categorias"])
-app.include_router(ingrediente_router, prefix="/ingredientes", tags=["ingredientes"])
-app.include_router(producto_router, prefix="/productos", tags=["productos"])
-app.include_router(direccion_router, prefix="/direcciones", tags=["direcciones"])
-app.include_router(pedido_router, prefix="/pedidos", tags=["pedidos"])
+api_v1.include_router(usuario_router, prefix="/usuario", tags=["usuarios"])
+api_v1.include_router(categoria_router, prefix="/categorias", tags=["categorias"])
+api_v1.include_router(ingrediente_router, prefix="/ingredientes", tags=["ingredientes"])
+api_v1.include_router(producto_router, prefix="/productos", tags=["productos"])
+api_v1.include_router(direccion_router, prefix="/direcciones", tags=["direcciones"])
+api_v1.include_router(pedido_router, prefix="/pedidos", tags=["pedidos"])
+
+app.include_router(api_v1)
