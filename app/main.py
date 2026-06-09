@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
 from app.core.database import create_db_and_tables
 from app.modules.producto.router import router as producto_router
 from app.modules.categoria.router import router as categoria_router
@@ -25,7 +26,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
