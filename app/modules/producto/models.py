@@ -57,7 +57,7 @@ class Producto(SQLModel, table=True):
     )
     stock_cantidad: int = Field(default=0, ge=0,nullable=False)
     disponible: bool = Field(default=True, nullable=False,index=True)
-
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     deleted_at: Optional[datetime] = Field(default=None)

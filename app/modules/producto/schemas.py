@@ -37,7 +37,6 @@ class ProductoBase(SQLModel):
     descripcion: Optional[str] = Field(default=None)
     precio_base: float  = Field(ge=0)
     imagenes_url: Optional[list[str]] = None
-    # stock_cantidad: int = Field(default=0, ge=0)
     disponible: bool = Field(default=True)
 
 

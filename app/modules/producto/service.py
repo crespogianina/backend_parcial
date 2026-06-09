@@ -381,6 +381,14 @@ class ProductoService:
 
 
     def actualizar_imagenes(self, producto_id: int, imagenes: List[str]) -> ProductoPublic:
+        imagenes = [url.strip() for url in imagenes if url.strip()]
+
+        if len(imagenes) != len(set(imagenes)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se permiten imágenes duplicadas",
+            )
+
         with ProductoUnitOfWork(self._session) as uow:
             producto = self._get_or_404(uow, producto_id)
 
