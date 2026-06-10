@@ -99,13 +99,13 @@ def crear_pedido(
     status_code=status.HTTP_200_OK,
     summary="Avanzar pedido",
 )
-def avanzar_pedido(
+async def avanzar_pedido(
     id: Annotated[int, Path(gt=0)],
     usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "PEDIDOS"]))], 
     observacion: Annotated[Optional[str], Body(embed=True)] = None,
     service: PedidoService = Depends(get_pedido_service),
 ) -> PedidoDetail:
-    return service.avanzar_pedido(id, observacion, usuario)   
+    return await service.avanzar_pedido(id, observacion, usuario)   
 
 
 @router.patch(
@@ -122,7 +122,6 @@ def cancelar_pedido(
 ) -> PedidoDetail:
     return service.cancelar_pedido(id, observacion, usuario)
 
-# revisar
 @router.get(
     "/{id}/historial",
     response_model=list[HistorialEstadoRead],
@@ -137,7 +136,6 @@ def obtener_historial_pedido(
     return service.obtener_historial_pedido(id, usuario)
 
 
-# revisar
 @router.delete(
     "/{id}",
     response_model=PedidoDetail,

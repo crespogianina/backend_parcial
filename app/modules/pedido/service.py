@@ -51,6 +51,23 @@ ESTADOS_CON_STOCK_DECREMENTADO = {
 
 ESTADOS_CANCELABLES_POR_CLIENTE = {ESTADO["PENDIENTE"], ESTADO["CONFIRMADO"]}
 
+EVENTOS_WS = {
+    "PENDIENTE":      "NUEVO_PEDIDO",
+    "CONFIRMADO":     "PEDIDO_CONFIRMADO",
+    "EN_PREPARACION": "PEDIDO_EN_PREPARACION",
+    "EN_CAMINO":      "PEDIDO_EN_CAMINO",
+    "ENTREGADO":      "PEDIDO_ENTREGADO",
+    "CANCELADO":      "PEDIDO_CANCELADO",
+}
+
+ROLES_POR_TRANSICION = {
+    "PENDIENTE":      ["pedidos", "admin"],
+    "CONFIRMADO":     ["pedidos", "admin"],
+    "EN_PREPARACION": ["pedidos", "admin"],
+    "EN_CAMINO":      ["pedidos", "admin"],
+    "ENTREGADO":      ["pedidos", "admin"],
+    "CANCELADO":      ["pedidos", "admin"],
+}
 class PedidoService:
 
     def __init__(self, session: Session) -> None:
@@ -199,6 +216,19 @@ class PedidoService:
         
         return Decimal("0") if subtotal >= UMBRAL_ENVIO_GRATIS else COSTO_ENVIO_FIJO
 
+
+    async def _emit_ws(self, pedido_id: int, estado: str, detail: PedidoDetail) -> None:
+        from app.core.websocket import manager
+
+        event = EVENTOS_WS.get(estado)
+        if not event:
+            return
+
+        data = detail.model_dump(mode="json")
+
+        await manager.broadcast_to_order(pedido_id, event, data)
+        await manager.broadcast_to_roles(ROLES_POR_TRANSICION.get(estado, []), event, data)
+
     #────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
     def crear_pedido(self, usuario_id: int, data: PedidoCreate) -> PedidoDetail:
@@ -305,7 +335,7 @@ class PedidoService:
             return self._to_pedido_detail(pedido)
         
 
-    def avanzar_pedido(self, pedido_id: int, observacion: Optional[str], usuario: UserPublic) -> PedidoDetail:
+    async def avanzar_pedido(self, pedido_id: int, observacion: Optional[str], usuario: UserPublic) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = uow.pedidos.get_by_id(pedido_id)
 
@@ -357,7 +387,10 @@ class PedidoService:
                 )
             )
 
-            return self._to_pedido_detail(pedido)
+            result = self._to_pedido_detail(pedido) 
+
+        await self._emit_ws(pedido_id, nuevo_estado, result)
+        return result
         
 
     def cancelar_pedido(self, pedido_id: int, observacion: Optional[str], usuario: UserPublic) -> PedidoDetail:
@@ -412,7 +445,6 @@ class PedidoService:
             return self._to_pedido_detail(pedido)
         
 
-# revisar
     def obtener_historial_pedido(self, pedido_id: int, usuario: UserPublic) -> list[HistorialEstadoRead]:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = uow.pedidos.get_by_id(pedido_id)
