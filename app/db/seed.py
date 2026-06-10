@@ -4,6 +4,7 @@ from app.core.database import engine, create_db_and_tables
 from app.core.security import hash_password
 from app.modules.usuarios.model import Rol, Usuario, UsuarioRol
 from app.modules.pedido.models import EstadoPedido, FormaPago
+from app.modules.producto.models import UnidadMedida
 
 ROLES = [
     {"codigo": "ADMIN",   "nombre": "Administrador", "descripcion": "Acceso total sin restricciones"},
@@ -17,7 +18,7 @@ USUARIOS = [
         "username": "admin",
         "nombre":   "Administrador",
         "apellido": "Sistema",
-        "email":    "admin@example.com",
+        "email":    "admin@foodstore.com",
         "password": "Admin1234!",
         "roles":    ["ADMIN"],
     },
@@ -52,7 +53,7 @@ UNIDADES_MEDIDA = [
     {"nombre": "Litro",     "simbolo": "L",   "tipo": "volumen"},
     {"nombre": "Mililitro", "simbolo": "ml",  "tipo": "volumen"},
     {"nombre": "Unidad",    "simbolo": "ud",  "tipo": "contable"},
-    {"nombre": "Porción",   "simbolo": "porc","tipo": "contable"},
+    {"nombre": "Porción",   "simbolo": "porciones", "tipo": "contable"},
 ]
 
 def seed_roles(session: Session) -> None:
@@ -133,6 +134,21 @@ def seed_formas_pago(session: Session) -> None:
             print(f"  [+] Creado:    {data['codigo']}")
     session.commit()
 
+
+def seed_unidades_medida(session: Session) -> None:
+    print("\n── Unidades de Medida ──")
+    for data in UNIDADES_MEDIDA:
+        existing = session.exec(
+            select(UnidadMedida).where(UnidadMedida.simbolo == data["simbolo"])
+        ).first()
+        if existing:
+            print(f"  [=] Ya existe: {data['simbolo']}")
+        else:
+            session.add(UnidadMedida(**data))
+            print(f"  [+] Creado:    {data['simbolo']}")
+    session.commit()
+
+
 def run() -> None:
     print("=== Seed — Food Store ===")
     create_db_and_tables()
@@ -142,6 +158,7 @@ def run() -> None:
         seed_usuarios(session)
         seed_estados_pedido(session)
         seed_formas_pago(session)
+        seed_unidades_medida(session)
 
     print("\n── Usuarios disponibles ──")
     print("  admin / Admin1234!  → ADMIN")
