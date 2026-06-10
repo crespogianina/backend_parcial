@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from app.modules.direcciones.schemas import DireccionPublic
 from app.modules.pedido.models import DetallePedido, HistorialEstadoPedido, Pedido
-from app.modules.pedido.schemas import DetallePedidoRead, DireccionSnapshot, PedidoCreate, PedidoDetail, PedidoListResponse, PedidoListResponse
+from app.modules.pedido.schemas import DetallePedidoRead, DireccionSnapshot, HistorialEstadoPedidoList, HistorialEstadoRead, PedidoCreate, PedidoDetail, PedidoListResponse, PedidoListResponse
 from app.modules.pedido.unit_of_work import PedidoUnitOfWork
 from app.modules.producto.models import Producto
 from app.modules.producto.service import ProductoService
@@ -49,11 +49,21 @@ ESTADOS_CON_STOCK_DECREMENTADO = {
     ESTADO["EN_CAMINO"],
 }
 
+ESTADOS_CANCELABLES_POR_CLIENTE = {ESTADO["PENDIENTE"], ESTADO["CONFIRMADO"]}
+
 class PedidoService:
 
     def __init__(self, session: Session) -> None:
         self._session = session
         self._producto_service = ProductoService(session)
+
+    # ── Helpers Publicos ──────────────────────────────────────────────────────
+
+    def pedido_pertenece_a_usuario(self, pedido_id: int, usuario_id: int) -> bool:
+        with PedidoUnitOfWork(self._session) as uow:
+            pedido = uow.pedidos.get_by_id(pedido_id)
+
+            return pedido is not None and pedido.usuario_id == usuario_id
 
     # ── Helpers privados ──────────────────────────────────────────────────────
 
@@ -72,6 +82,7 @@ class PedidoService:
                 detail=f"La forma de pago '{forma_pago_codigo}' no está habilitada",
             )
         
+
     def _validar_direccion_requerida(self, forma_pago_codigo: str, direccion_id: Optional[int]) -> None:
         if forma_pago_codigo in FORMAS_PAGO_CON_ENVIO and direccion_id is None:
             raise HTTPException(
@@ -79,7 +90,6 @@ class PedidoService:
                 detail=f"La forma de pago '{forma_pago_codigo}' requiere una dirección de entrega.",
             )
         
-
 
     def _validar_items(self, items: list, uow: PedidoUnitOfWork) -> None:
         for item in items:
@@ -127,6 +137,7 @@ class PedidoService:
             })
 
         return detalles_data
+
 
     def _to_pedido_detail(self, pedido: Pedido) -> PedidoDetail:
         return PedidoDetail(
@@ -188,8 +199,7 @@ class PedidoService:
         
         return Decimal("0") if subtotal >= UMBRAL_ENVIO_GRATIS else COSTO_ENVIO_FIJO
 
-
-    #──────────────────────────────────────────────────────
+    #────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
     def crear_pedido(self, usuario_id: int, data: PedidoCreate) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
@@ -396,6 +406,69 @@ class PedidoService:
                     estado_hacia=ESTADO["CANCELADO"],
                     usuario_id=usuario.id,
                     motivo=observacion,
+                )
+            )
+
+            return self._to_pedido_detail(pedido)
+        
+
+# revisar
+    def obtener_historial_pedido(self, pedido_id: int, usuario: UserPublic) -> list[HistorialEstadoRead]:
+        with PedidoUnitOfWork(self._session) as uow:
+            pedido = uow.pedidos.get_by_id(pedido_id)
+
+            if pedido is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Pedido {pedido_id} no encontrado",
+                )
+
+            es_staff = any(r in {"PEDIDOS", "ADMIN"} for r in usuario.roles)
+
+            if not es_staff and pedido.usuario_id != usuario.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tenés permiso para ver el historial de este pedido",
+                )
+
+            return [HistorialEstadoRead.model_validate(h) for h in pedido.historial]
+        
+
+    def cancelar_pedido_propio(self, pedido_id: int, usuario: UserPublic, motivo: Optional[str] = None) -> PedidoDetail:
+        with PedidoUnitOfWork(self._session) as uow:
+            pedido = uow.pedidos.get_by_id(pedido_id)
+
+            if pedido is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Pedido {pedido_id} no encontrado",
+                )
+
+            if pedido.usuario_id != usuario.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Solo podés cancelar tus propios pedidos",
+                )
+
+            estado_actual = pedido.estado_codigo
+
+            if estado_actual not in ESTADOS_CANCELABLES_POR_CLIENTE:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Un pedido en estado '{estado_actual}' ya no puede cancelarse desde el cliente.",
+                )
+
+            pedido.estado_codigo = ESTADO["CANCELADO"]
+            pedido.updated_at = datetime.now(timezone.utc)
+            uow.pedidos.add(pedido)
+
+            uow.historial.add(
+                HistorialEstadoPedido(
+                    pedido_id=pedido.id,
+                    estado_desde=estado_actual,
+                    estado_hacia=ESTADO["CANCELADO"],
+                    usuario_id=usuario.id,
+                    motivo=motivo or "Cancelado por el cliente",
                 )
             )
 

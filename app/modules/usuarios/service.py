@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session
 from app.core.config import settings
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import decode_token_con_motivo, hash_password, verify_password, create_access_token
 from app.modules.usuarios.model import Usuario, UsuarioRol
 from app.modules.usuarios.schemas import UserCreate, Token, UserPublic
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork
@@ -15,6 +15,28 @@ class UsuarioService:
     def __init__(self, session: Session):
         self._session = session
 
+    # ── Helpers ──────────────────────────────────────────────────────
+
+    def autenticar_websocket(self, token: str) -> tuple[Optional[tuple[int, str]], str]:
+        payload, motivo = decode_token_con_motivo(token)
+
+        if payload is None:
+            return None, motivo
+
+        username = payload.get("sub")
+
+        if not username:
+            return None, "invalido"
+
+        with UsuarioUnitOfWork(self._session) as uow:
+            user = uow.usuarios.get_by_username(username)
+
+            if not user or user.disabled:
+                return None, "usuario_inactivo"
+
+            return (user.id, user.role), "ok"
+
+    # ────────────────────────────────────────────────────────
 
     def get_by_username(self, username: str) -> UserPublic | None:
         with UsuarioUnitOfWork(self._session) as uow:
