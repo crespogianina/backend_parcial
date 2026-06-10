@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     ALGORITHM:  str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    AUTH_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    AUTH_RATE_LIMIT_WINDOW_MINUTES: int = 15
+
     MP_ACCESS_TOKEN: Optional[str] = None
     MP_PUBLIC_KEY: Optional[str] = None
     MP_WEBHOOK_URL: Optional[str] = None
