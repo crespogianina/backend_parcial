@@ -22,8 +22,11 @@ class DetallePedidoRepository(BaseRepository[DetallePedido]):
 class HistorialEstadoPedidoRepository(BaseRepository[HistorialEstadoPedido]):
     def __init__(self, session: Session) -> None:
         super().__init__(session, HistorialEstadoPedido)
+    
 
-
+    def obtener_historial_pedidos(self, pedido_id):
+        statement = select(HistorialEstadoPedido).where(HistorialEstadoPedido.pedido_id == pedido_id)
+        return exec(statement).all()
 
 class FormaPagoRepository(BaseRepository[FormaPago]):
     def __init__(self, session: Session) -> None:
