@@ -1,10 +1,12 @@
 import logging
+from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.database import get_session
+from app.core.deps import require_role
 from app.modules.pago.schemas import (
     CrearPagoRequest,
     ConfirmarPagoRequest,
@@ -12,6 +14,7 @@ from app.modules.pago.schemas import (
     PagoEstadoResponse,
 )
 from app.modules.pago.service import PagoService
+from app.modules.usuarios.schemas import UserPublic
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +28,12 @@ def get_payment_service(session: Session = Depends(get_session)) -> PagoService:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/create-preference", response_model=PagoCrearResponse)
-def create_preference( data: CrearPagoRequest, svc: PagoService = Depends(get_payment_service)):
-    return svc.crear_pago(data.pedido_id)
+def create_preference(
+    data: CrearPagoRequest,
+    usuario: Annotated[UserPublic, Depends(require_role(["CLIENT"]))],
+    svc: PagoService = Depends(get_payment_service),
+):
+    return svc.crear_pago(data.pedido_id, usuario) 
 
 
 @router.post("/webhook")
@@ -40,15 +47,19 @@ async def webhook(request: Request,svc: PagoService = Depends(get_payment_servic
         else:
             data = dict(await request.form())
 
-        return svc.procesar_webhook(data, query_params=query_params)
+        return await svc.procesar_webhook(data, query_params=query_params)
     except Exception as e:
         logger.exception("Error en webhook MP")
         return {"status": "error", "reason": str(e)}
 
 
 @router.post("/confirm", response_model=PagoEstadoResponse)
-def confirm_payment( data: ConfirmarPagoRequest, svc: PagoService = Depends(get_payment_service)):
-    return svc.confirmar_pago(data.pedido_id, data.payment_id)
+async def confirm_payment(
+    data: ConfirmarPagoRequest,
+    usuario: Annotated[UserPublic, Depends(require_role(["CLIENT", "ADMIN", "PEDIDOS"]))],
+    svc: PagoService = Depends(get_payment_service),
+):
+    return await svc.confirmar_pago(data.pedido_id, data.payment_id, usuario)
 
 
 @router.get("/redirect/{pedido_id}/{status}")

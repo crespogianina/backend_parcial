@@ -13,7 +13,7 @@ class Pago(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    pedido_id: int = Field(sa_column=Column(BigInteger, ForeignKey("pedido.id"), nullable=False))
+    pedido_id: int = Field(sa_column=Column(BigInteger, ForeignKey("pedidos.id"), nullable=False))
  
     mp_payment_id: Optional[int] = Field(default=None, sa_column=Column(BigInteger, unique=True, nullable=True))
     mp_status: str = Field(max_length=30, nullable=False)
