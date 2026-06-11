@@ -7,7 +7,7 @@ from sqlmodel import Relationship, SQLModel, Field
 
 
 if TYPE_CHECKING:
-    from app.modules.pago.models import Pago
+    # from app.modules.pago.models import Pago
     from app.modules.direcciones.model import DireccionEntrega
     from app.modules.producto.models import Producto
     from app.modules.usuarios.model import Usuario
@@ -94,7 +94,7 @@ class Pedido(SQLModel, table=True):
         back_populates="pedido",
         sa_relationship_kwargs={ "cascade": "all, delete-orphan", "order_by": "HistorialEstadoPedido.created_at", "lazy": "selectin"}
     )
-    pagos: List["Pago"] = Relationship(back_populates="pedido")
+    # pagos: List["Pago"] = Relationship(back_populates="pedido")
 
 class DetallePedido(SQLModel, table=True):
     __tablename__ = "detalles_pedido"

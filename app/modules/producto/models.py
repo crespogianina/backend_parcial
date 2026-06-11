@@ -92,4 +92,6 @@ class UnidadMedida(SQLModel, table=True):
 
     productos: List["Producto"] = Relationship(back_populates="unidad_medida")
     ingredientes: List["Ingrediente"] = Relationship(back_populates="unidad_medida")
-    productos_ingredientes: List[ProductoIngrediente] =  Relationship(back_populates="unidad_medida")
+    producto_ingredientes: List["ProductoIngrediente"] = Relationship(
+    back_populates="unidad_medida"
+)
