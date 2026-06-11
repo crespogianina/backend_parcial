@@ -84,6 +84,15 @@ class PedidoService:
         return pedido
 
 
+    def _puede_ver_pedido(self, usuario: UserPublic, pedido: Pedido) -> bool:
+        roles = {r.upper() for r in usuario.roles}
+
+        if roles & {"ADMIN", "PEDIDOS"}:
+            return True
+
+        return pedido.usuario_id == usuario.id
+
+
     def _validar_forma_pago(self, forma_pago_codigo: str, uow: PedidoUnitOfWork) -> None:
         forma_pago = uow.formas_pago.get_by_id(forma_pago_codigo)
 
@@ -410,14 +419,12 @@ class PedidoService:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = self._get_or_404(uow, pedido_id)
 
-            es_admin = "ADMIN" in {r.upper() for r in usuario.roles}
- 
-            if not es_admin and pedido.usuario_id != usuario.id:
+            if not self._puede_ver_pedido(usuario, pedido):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para ver este pedido",
                 )
-            
+
             return self._to_pedido_detail(pedido)
         
 
@@ -501,15 +508,13 @@ class PedidoService:
     def obtener_historial_pedido(self, pedido_id: int, usuario: UserPublic) -> list[HistorialEstadoRead]:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = self._get_or_404(uow, pedido_id)
- 
-            es_admin = "ADMIN" in {r.upper() for r in usuario.roles}
- 
-            if not es_admin and pedido.usuario_id != usuario.id:
+
+            if not self._puede_ver_pedido(usuario, pedido):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para ver el historial de este pedido",
                 )
- 
+
             historial = sorted(pedido.historial, key=lambda h: h.created_at)
 
             return [HistorialEstadoRead.model_validate(h) for h in historial]

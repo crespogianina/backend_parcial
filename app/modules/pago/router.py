@@ -56,7 +56,7 @@ async def webhook(request: Request,svc: PagoService = Depends(get_payment_servic
 @router.post("/confirm", response_model=PagoEstadoResponse)
 async def confirm_payment(
     data: ConfirmarPagoRequest,
-    usuario: Annotated[UserPublic, Depends(require_role(["CLIENT", "ADMIN", "PEDIDOS"]))],
+    usuario: Annotated[UserPublic, Depends(require_role(["CLIENT", "ADMIN"]))],
     svc: PagoService = Depends(get_payment_service),
 ):
     return await svc.confirmar_pago(data.pedido_id, data.payment_id, usuario)

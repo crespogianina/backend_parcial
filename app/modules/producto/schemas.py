@@ -55,6 +55,10 @@ class ProductoPublic(ProductoBase):
     stock_cantidad: Optional[int] = Field(default=None, ge=0)
 
 
+class ProductoStockUpdate(SQLModel):
+    stock_cantidad: int = Field(ge=0)
+
+
 class ProductoUpdate(SQLModel):
     nombre: Optional[str] = Field(default=None, min_length=2, max_length=150)
     descripcion: Optional[str] = None

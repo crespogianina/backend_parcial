@@ -30,6 +30,22 @@ USUARIOS = [
         "password": "Juan1234!",
         "roles":    ["CLIENT"],
     },
+    {
+        "username": "stock",
+        "nombre":   "María",
+        "apellido": "García",
+        "email":    "stock@foodstore.com",
+        "password": "Stock1234!",
+        "roles":    ["STOCK"],
+    },
+    {
+        "username": "pedidos",
+        "nombre":   "Carlos",
+        "apellido": "López",
+        "email":    "pedidos@foodstore.com",
+        "password": "Pedidos1234!",
+        "roles":    ["PEDIDOS"],
+    },
 ]
 
 ESTADOS_PEDIDO = [
@@ -161,8 +177,10 @@ def run() -> None:
         seed_unidades_medida(session)
 
     print("\n── Usuarios disponibles ──")
-    print("  admin / Admin1234!  → ADMIN")
-    print("  juan  / Juan1234!   → CLIENT")
+    print("  admin   / Admin1234!   → ADMIN")
+    print("  juan    / Juan1234!    → CLIENT")
+    print("  stock   / Stock1234!   → STOCK")
+    print("  pedidos / Pedidos1234! → PEDIDOS")
     print()
 
 

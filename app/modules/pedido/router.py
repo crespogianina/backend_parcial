@@ -5,7 +5,7 @@ from typing_extensions import Annotated
 from fastapi import APIRouter, Body, Depends, Path, Query, WebSocket, WebSocketDisconnect, status
 from sqlmodel import Session
 from app.core.database import get_session, engine
-from app.core.deps import get_current_active_user, require_role
+from app.core.deps import require_role
 from app.modules.pedido.schemas import (
     AvanzarEstadoRequest,
     HistorialEstadoRead,
@@ -73,10 +73,10 @@ def obtener_pedidos(
 )
 def obtener_pedido_id(
     id: Annotated[int, Path(gt=0)],
-    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "CLIENT"]))], 
+    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "CLIENT", "PEDIDOS"]))],
     service: PedidoService = Depends(get_pedido_service),
 ) -> PedidoDetail:
-    return service.obtener_pedido(id, usuario)   
+    return service.obtener_pedido(id, usuario)
 
 
 @router.post(
@@ -132,9 +132,8 @@ async def cancelar_pedido(
 )
 def obtener_historial_pedido(
     id: Annotated[int, Path(gt=0)],
-    usuario: Annotated[UserPublic, Depends(get_current_active_user)],
+    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "CLIENT", "PEDIDOS"]))],
     service: PedidoService = Depends(get_pedido_service),
-    summary="Historial completo",
 ) -> list[HistorialEstadoRead]:
     return service.obtener_historial_pedido(id, usuario)
 

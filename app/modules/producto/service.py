@@ -307,6 +307,23 @@ class ProductoService:
             uow.productos.add(producto)
     
 
+    def update_stock_cantidad(self, producto_id: int, stock_cantidad: int) -> ProductoPublic:
+        with ProductoUnitOfWork(self._session) as uow:
+            producto = self._get_or_404(uow, producto_id)
+
+            if stock_cantidad == producto.stock_cantidad:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El producto de id:{producto_id} ya tiene stock_cantidad={stock_cantidad}",
+                )
+
+            producto.stock_cantidad = stock_cantidad
+            producto.updated_at = datetime.now(timezone.utc)
+            uow.productos.add(producto)
+
+            return self._to_producto_public(producto)
+
+
     def update_disponibilidad(self, producto_id: int, disponible: bool) -> ProductoPublic:
         with ProductoUnitOfWork(self._session) as uow:
             producto = uow.productos.get_by_id(producto_id)
