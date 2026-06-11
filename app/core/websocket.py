@@ -136,11 +136,10 @@ class ConnectionManager:
                 self.disconnect(connection)
 
 
-    async def broadcast_pedido(self, pedido_id: int, evento: dict[str, Any]) -> None:
-        rooms = [f"order:{pedido_id}", "role:admin", "role:pedidos"]
-        logger.info(f"Broadcast {evento.get('event')} pedido={pedido_id} a {rooms}")
-
-        await self._send_to_rooms(rooms, evento)
+    async def broadcast_pedido(self, pedido_id: int, dueno_id: int, evento: dict[str, Any]) -> None:
+            rooms = [f"order:{pedido_id}", f"user:{dueno_id}", "role:admin", "role:pedidos"]
+            logger.info(f"Broadcast {evento.get('event')} pedido={pedido_id} a {rooms}")
+            await self._send_to_rooms(rooms, evento) 
 
 
 manager = ConnectionManager()

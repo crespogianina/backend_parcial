@@ -152,7 +152,7 @@ def cancelar_pedido_propio(
 
 
 @router.websocket("/ws")
-async def pedidos_websocket(websocket: WebSocket):
+async def pedidos_websocket(websocket: WebSocket, usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "PEDIDOS"]))] ):
     token = websocket.query_params.get("token") or websocket.cookies.get("access_token")
 
     if not token:
@@ -205,4 +205,6 @@ async def pedidos_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception:
+        manager.disconnect(websocket)
+    finally:
         manager.disconnect(websocket)
