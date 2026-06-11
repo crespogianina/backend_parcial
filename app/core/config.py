@@ -32,10 +32,10 @@ class Settings(BaseSettings):
         "https://nondefinitely-unfunded-cade.ngrok-free.dev",
     ]
 
-    MP_ACCESS_TOKEN: Optional[str] = Field(
-        default=None,
-        validation_alias=AliasChoices("MP_ACCESS_TOKEN", "MERCADOPAGO_ACCESS_TOKEN"),
-    )
+    AUTH_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    AUTH_RATE_LIMIT_WINDOW_MINUTES: int = 15
+
+    MP_ACCESS_TOKEN: Optional[str] = None
     MP_PUBLIC_KEY: Optional[str] = None
     MP_NOTIFICATION_URL: Optional[str] = Field(
         default=None,

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import create_db_and_tables
@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Integrador",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -31,6 +32,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 api_v1 = APIRouter(prefix="/api/v1")
 
 api_v1.include_router(usuario_router, prefix="/usuario", tags=["usuarios"])
@@ -41,3 +43,22 @@ api_v1.include_router(direccion_router, prefix="/direcciones", tags=["direccione
 api_v1.include_router(pedido_router, prefix="/pedidos", tags=["pedidos"])
 
 app.include_router(api_v1)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(content=b"", media_type="image/x-icon")
+
+
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "version": "1.0.0"}
+
+
+@app.get("/debug/ws-rooms", tags=["debug"])
+def ws_rooms():
+    from app.core.websocket import manager
+    return {
+        "total_connections": manager.get_active_connections_count(),
+        "rooms": manager.get_rooms_info(),
+    }
