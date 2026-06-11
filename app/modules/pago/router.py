@@ -5,42 +5,41 @@ from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.database import get_session
-from app.modules.payments.schemas import (
+from app.modules.pago.schemas import (
     CrearPagoRequest,
     ConfirmarPagoRequest,
     PagoCrearResponse,
     PagoEstadoResponse,
 )
-from app.modules.payments.service import PaymentService
+from app.modules.pago.service import PagoService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/pagos", tags=["pagos"])
+router = APIRouter(prefix="/pagos", tags=["pagos"])
 
+# ── Dependencias ──────────────────────────────────────────────────────────────
 
-def get_payment_service(session: Session = Depends(get_session)) -> PaymentService:
-    return PaymentService(session)
+def get_payment_service(session: Session = Depends(get_session)) -> PagoService:
+    return PagoService(session)
 
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/create-preference", response_model=PagoCrearResponse)
-def create_preference(
-    data: CrearPagoRequest,
-    svc: PaymentService = Depends(get_payment_service),
-):
+def create_preference( data: CrearPagoRequest, svc: PagoService = Depends(get_payment_service)):
     return svc.crear_pago(data.pedido_id)
 
 
 @router.post("/webhook")
-async def webhook(
-    request: Request,
-    svc: PaymentService = Depends(get_payment_service),
-):
+async def webhook(request: Request,svc: PagoService = Depends(get_payment_service)):
     try:
         query_params = dict(request.query_params)
+
         if request.headers.get("content-type", "").startswith("application/json"):
             data = await request.json()
+
         else:
             data = dict(await request.form())
+
         return svc.procesar_webhook(data, query_params=query_params)
     except Exception as e:
         logger.exception("Error en webhook MP")
@@ -48,10 +47,7 @@ async def webhook(
 
 
 @router.post("/confirm", response_model=PagoEstadoResponse)
-def confirm_payment(
-    data: ConfirmarPagoRequest,
-    svc: PaymentService = Depends(get_payment_service),
-):
+def confirm_payment( data: ConfirmarPagoRequest, svc: PagoService = Depends(get_payment_service)):
     return svc.confirmar_pago(data.pedido_id, data.payment_id)
 
 
@@ -65,4 +61,5 @@ async def redirect_after_pago(pedido_id: int, status: str, request: Request):
 
     if qs:
         url += f"?{qs}"
+        
     return RedirectResponse(url=url)
