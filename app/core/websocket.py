@@ -85,21 +85,6 @@ class ConnectionManager:
         await self._emit_to_room(room, event_type, data)
 
 
-    async def broadcast_to_order(self, order_id: int, event_type: str, data: dict[str, Any]) -> None:
-        room = f"order:{order_id}"
-        await self._emit_to_room(room, event_type, data)
-
-
-    async def broadcast_to_roles(self, roles: list[str], event_type: str, data: dict[str, Any]) -> None:
-        rooms = [f"role:{role.lower()}" for role in roles]
-        await self._send_to_rooms(rooms, {"event": event_type, "data": data})
-
-
-    async def broadcast(self, event_type: str, data: dict[str, Any]) -> None:
-        rooms = list(self.rooms.keys())
-        await self._send_to_rooms(rooms, {"event": event_type, "data": data})
-
-
     def get_active_connections_count(self) -> int:
         return len(self.socket_rooms)
 

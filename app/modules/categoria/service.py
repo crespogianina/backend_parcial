@@ -12,6 +12,7 @@ class CategoriaService:
         self._session = session
 
     # ── Helpers privados ──────────────────────────────────────────────────────
+    
     def _get_or_404(self, uow: CategoriaUnitOfWork, categoria_id: int) -> Categoria:
         categoria = uow.categorias.get_by_id(categoria_id)
 
