@@ -527,7 +527,8 @@ class PedidoService:
                     400,
                     f"Un pedido en estado '{pedido.estado_codigo}' ya no puede cancelarse desde el cliente.",
                 )
-
+            estado_anterior = pedido.estado_codigo
+            
             self._aplicar_transicion(
                 uow, pedido, ESTADO["CANCELADO"], usuario.id,
                 motivo or "Cancelado por el cliente",
