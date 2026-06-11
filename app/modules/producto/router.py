@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
 from app.core.database import get_session
 from app.core.deps import require_role
-from app.modules.producto.schemas import IngredienteAsignar, ProductoCreate, ProductoPublic,  ProductoUpdate, ProductoList
+from app.modules.producto.schemas import IngredienteAsignar, ProductoCreate, ProductoPublic, ProductoStockUpdate, ProductoUpdate, ProductoList
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from app.modules.producto.service import ProductoService
@@ -87,6 +87,21 @@ def activar_producto(
 
 
 @router.patch(
+    "/{id}/stock",
+    response_model=ProductoPublic,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar stock del producto (ADMIN y STOCK)",
+)
+def actualizar_stock_producto(
+    id: Annotated[int, Path(gt=0)],
+    data: ProductoStockUpdate,
+    _user: Annotated[UserPublic, Depends(require_role(["ADMIN", "STOCK"]))],
+    svc: ProductoService = Depends(get_producto_service),
+) -> ProductoPublic:
+    return svc.update_stock_cantidad(id, data.stock_cantidad)
+
+
+@router.patch(
     "/{id}/imagenes",
     response_model=ProductoPublic,
     status_code=status.HTTP_200_OK,
@@ -104,7 +119,7 @@ def actualizar_imagenes(
 @router.delete("/{id}", status_code=status.HTTP_200_OK, summary="Eliminar producto por id (Soft Delete)")
 def eliminar_producto(
     id: Annotated[int, Path(gt=0)],
-    _user: Annotated[UserPublic, Depends(require_role(["ADMIN", "STOCK"]))], 
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     svc: ProductoService = Depends(get_producto_service),
 ) -> dict:
     svc.soft_delete(id)

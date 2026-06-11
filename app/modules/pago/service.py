@@ -322,9 +322,9 @@ class PagoService:
         pedido = self._obtener_pedido_or_404(pedido_id)
 
         if usuario is not None:
-            es_staff = bool({"ADMIN", "PEDIDOS"} & {r.upper() for r in usuario.roles})
+            es_admin = "ADMIN" in {r.upper() for r in usuario.roles}
 
-            if not es_staff and pedido.usuario_id != usuario.id:
+            if not es_admin and pedido.usuario_id != usuario.id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para consultar este pago.",

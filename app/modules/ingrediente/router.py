@@ -1,14 +1,14 @@
 
-from typing import Annotated, Optional      
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
 from app.core.database import get_session
-from app.core.deps import get_current_active_user, require_role
-from app.modules.ingrediente.schemas import IngredienteCreate, IngredientePublic,  IngredienteUpdate, IngredienteList
+from app.core.deps import require_role
+from app.modules.ingrediente.schemas import IngredienteCreate, IngredientePublic, IngredienteUpdate, IngredienteList
 from app.modules.ingrediente.service import IngredienteService
 from app.modules.usuarios.schemas import UserPublic
 
-router = APIRouter(dependencies=[Depends(get_current_active_user)])
+router = APIRouter()
 
 def get_ingrediente_service(session: Session = Depends(get_session)) -> IngredienteService:
     return IngredienteService(session)
@@ -18,7 +18,7 @@ def get_ingrediente_service(session: Session = Depends(get_session)) -> Ingredie
 @router.post("/", response_model=IngredientePublic, status_code=status.HTTP_201_CREATED, summary="Crear un ingrediente")
 def create_ingrediente(
     data: IngredienteCreate,
-    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> IngredientePublic:
     return svc.create_ingrediente(data)
@@ -26,35 +26,41 @@ def create_ingrediente(
 
 @router.get("/", response_model=IngredienteList, status_code=status.HTTP_200_OK, summary="Obtener todos los ingredientes")
 def get_all_ingredientes(
+    _user: Annotated[UserPublic, Depends(require_role(["ADMIN", "STOCK"]))],
     svc: IngredienteService = Depends(get_ingrediente_service),
-    offset: Annotated[int, Query(ge=0)] = 0, 
-    limit: Annotated[int, Query(ge=1, le=50)] = 50, 
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 50,
     es_alergeno: Annotated[Optional[bool], Query()] = None,
     nombre: Annotated[Optional[str], Query()] = None,
     descripcion: Annotated[Optional[str], Query()] = None
-    ) -> IngredienteList:
-    return svc.get_all(es_alergeno,nombre, descripcion, offset, limit )
+) -> IngredienteList:
+    return svc.get_all(es_alergeno, nombre, descripcion, offset, limit)
 
 
 @router.get("/alergenos", response_model=IngredienteList, status_code=status.HTTP_200_OK, summary="Obtener todos los ingredientes alérgenos")
 def get_ingredientes_alergenos(
+    _user: Annotated[UserPublic, Depends(require_role(["ADMIN", "STOCK"]))],
     svc: IngredienteService = Depends(get_ingrediente_service),
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=50)] = 50
 ) -> IngredienteList:
-    return svc.get_all( es_alergeno=True, offset=offset, limit=limit)
+    return svc.get_all(es_alergeno=True, offset=offset, limit=limit)
 
 
 @router.get("/{id}", response_model=IngredientePublic, status_code=status.HTTP_200_OK, summary="Obtener ingrediente por id")
-def get_ingrediente_by_id(id: Annotated[int, Path(gt=0)], svc: IngredienteService = Depends(get_ingrediente_service)) -> IngredientePublic:
+def get_ingrediente_by_id(
+    id: Annotated[int, Path(gt=0)],
+    _user: Annotated[UserPublic, Depends(require_role(["ADMIN", "STOCK"]))],
+    svc: IngredienteService = Depends(get_ingrediente_service),
+) -> IngredientePublic:
     return svc.get_by_id(id)
 
 
 @router.put("/{id}", response_model=IngredientePublic, status_code=status.HTTP_200_OK, summary="Editar ingrediente por id")
 def edit_ingrediente(
-    id: Annotated[int, Path(gt=0)], 
+    id: Annotated[int, Path(gt=0)],
     ingrediente: IngredienteUpdate,
-    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> IngredientePublic:
     return svc.update(id, ingrediente)
@@ -63,18 +69,18 @@ def edit_ingrediente(
 @router.delete("/{id}", status_code=status.HTTP_200_OK, summary="Eliminar ingrediente por id")
 def eliminar_ingrediente(
     id: Annotated[int, Path(gt=0)],
-    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> dict:
     svc.soft_delete(id)
-    return {"mensaje": f"Se elimino correctamente el ingrediente con id {id}"} 
+    return {"mensaje": f"Se elimino correctamente el ingrediente con id {id}"}
 
 
 @router.post("/{id}", status_code=status.HTTP_200_OK, summary="Activar ingrediente por id")
 def activar_ingrediente(
     id: Annotated[int, Path(gt=0)],
-    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],  
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     svc: IngredienteService = Depends(get_ingrediente_service)
 ) -> dict:
     svc.activar_ingrediente(id)
-    return {"mensaje": f"Se activo correctamente el ingrediente con id {id}"} 
+    return {"mensaje": f"Se activo correctamente el ingrediente con id {id}"}
