@@ -7,6 +7,7 @@ from .schemas import CategoriaAsignar, CategoriaProductoRead, IngredienteAsignar
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from .unit_of_work import ProductoUnitOfWork
+from app.modules.uploads.service import UploadService
 
 class ProductoService:
 
@@ -298,7 +299,10 @@ class ProductoService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"El producto de id:{producto_id} ya se encuentra desactivado",
                 )
-            
+
+            if producto.imagenes_url:
+                UploadService().delete_images_by_urls(producto.imagenes_url)
+
             producto.deleted_at = datetime.utcnow()
             uow.productos.add(producto)
     

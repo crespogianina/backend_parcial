@@ -1,4 +1,6 @@
-from sqlmodel import SQLModel
+from typing import Optional
+
+from sqlmodel import Field, SQLModel
 
 
 class CloudinaryResponse(SQLModel):
@@ -8,3 +10,11 @@ class CloudinaryResponse(SQLModel):
     height: int
     format: str
     resource_type: str
+
+
+class ImagenProductoUpdate(SQLModel):
+    imagenes_url: list[str] = Field(min_length=0, max_length=10)
+
+
+class ImagenCategoriaUpdate(SQLModel):
+    imagen_url: Optional[str] = None

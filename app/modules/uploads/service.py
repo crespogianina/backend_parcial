@@ -1,3 +1,6 @@
+import re
+from typing import Optional
+
 import cloudinary
 import cloudinary.uploader
 from fastapi import HTTPException, UploadFile, status
@@ -81,6 +84,44 @@ class UploadService:
             format=result["format"],
             resource_type=result["resource_type"],
         )
+
+    @staticmethod
+    def public_id_from_url(url: str) -> Optional[str]:
+        if "res.cloudinary.com" not in url:
+            return None
+
+        parts = url.split("/upload/", maxsplit=1)
+        if len(parts) < 2:
+            return None
+
+        path = re.sub(r"^v\d+/", "", parts[1])
+        if "." in path.rsplit("/", maxsplit=1)[-1]:
+            path = path.rsplit(".", maxsplit=1)[0]
+
+        return path or None
+
+    def _cloudinary_configured(self) -> bool:
+        return all([
+            settings.CLOUDINARY_CLOUD_NAME,
+            settings.CLOUDINARY_API_KEY,
+            settings.CLOUDINARY_API_SECRET,
+        ])
+
+    def delete_image_by_url(self, url: str) -> None:
+        public_id = self.public_id_from_url(url)
+        if not public_id or not self._cloudinary_configured():
+            return
+
+        try:
+            self._configure_cloudinary()
+            cloudinary.uploader.destroy(public_id, resource_type="image")
+        except Exception:
+            return
+
+    def delete_images_by_urls(self, urls: list[str]) -> None:
+        for url in urls:
+            if url:
+                self.delete_image_by_url(url)
 
     def delete_image(self, public_id: str) -> None:
         self._configure_cloudinary()
