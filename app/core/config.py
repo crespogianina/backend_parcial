@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     MP_PUBLIC_KEY: Optional[str] = None
     MP_WEBHOOK_URL: Optional[str] = None
     NGROK_URL: Optional[str] = None
+
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
     
     model_config = {
         "env_file": ".env",
