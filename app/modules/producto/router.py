@@ -1,6 +1,6 @@
 
 from typing import Annotated, List, Optional
-from fastapi import APIRouter, Body, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
 from app.core.database import get_session
 from app.core.deps import require_role
@@ -8,6 +8,7 @@ from app.modules.producto.schemas import IngredienteAsignar, ProductoCreate, Pro
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from app.modules.producto.service import ProductoService
+from app.modules.uploads.schemas import ImagenProductoUpdate
 from app.modules.usuarios.schemas import UserPublic
 
 router = APIRouter()
@@ -93,11 +94,11 @@ def activar_producto(
 )
 def actualizar_imagenes(
     id: Annotated[int, Path(gt=0)],
-    imagenes: Annotated[List[str], Body(min_length=0, max_length=10)],
+    data: ImagenProductoUpdate,
     _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     svc: ProductoService = Depends(get_producto_service),
 ) -> ProductoPublic:
-    return svc.actualizar_imagenes(id, imagenes)
+    return svc.actualizar_imagenes(id, data.imagenes_url)
 
 
 @router.delete("/{id}", status_code=status.HTTP_200_OK, summary="Eliminar producto por id (Soft Delete)")
