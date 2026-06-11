@@ -31,6 +31,7 @@ class ConnectionManager:
 
  # ──────────────────────────────────────────────────────────────────────────
 
+    
     async def connect(self, websocket: WebSocket, roles: list[str], user_id: int) -> None:
         await websocket.accept()
 
@@ -38,8 +39,14 @@ class ConnectionManager:
             self._join_room(websocket, f"role:{role.lower()}")
 
         self._join_room(websocket, f"user:{user_id}")
+        for role in roles:
+            self._join_room(websocket, f"role:{role.lower()}")
+
+        self._join_room(websocket, f"user:{user_id}")
 
         logger.info(
+            f"WS aceptado. user_id={user_id}, roles={roles}. "
+            f"Total rooms activas: {len(self.rooms)}"
             f"WS aceptado. user_id={user_id}, roles={roles}. "
             f"Total rooms activas: {len(self.rooms)}"
         )
@@ -83,21 +90,6 @@ class ConnectionManager:
     async def broadcast_to_role(self, role: str, event_type: str, data: dict[str, Any]) -> None:
         room = f"role:{role.lower()}"
         await self._emit_to_room(room, event_type, data)
-
-
-    async def broadcast_to_order(self, order_id: int, event_type: str, data: dict[str, Any]) -> None:
-        room = f"order:{order_id}"
-        await self._emit_to_room(room, event_type, data)
-
-
-    async def broadcast_to_roles(self, roles: list[str], event_type: str, data: dict[str, Any]) -> None:
-        rooms = [f"role:{role.lower()}" for role in roles]
-        await self._send_to_rooms(rooms, {"event": event_type, "data": data})
-
-
-    async def broadcast(self, event_type: str, data: dict[str, Any]) -> None:
-        rooms = list(self.rooms.keys())
-        await self._send_to_rooms(rooms, {"event": event_type, "data": data})
 
 
     def get_active_connections_count(self) -> int:

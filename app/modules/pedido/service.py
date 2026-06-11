@@ -1,4 +1,3 @@
-
 import logging
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -9,7 +8,17 @@ from sqlmodel import Session
 from app.core.websocket import manager
 from app.modules.direcciones.schemas import DireccionPublic
 from app.modules.pedido.models import DetallePedido, HistorialEstadoPedido, Pedido
-from app.modules.pedido.schemas import ( AvanzarEstadoRequest, CrearPedidoRequest, DetallePedidoRead, DireccionSnapshot, HistorialEstadoRead, PagoRead, PaginatedPedidos, PedidoDetail, PedidoRead)
+from app.modules.pedido.schemas import (
+    AvanzarEstadoRequest,
+    CrearPedidoRequest,
+    DetallePedidoRead,
+    DireccionSnapshot,
+    HistorialEstadoRead,
+    PagoRead,
+    PaginatedPedidos,
+    PedidoDetail,
+    PedidoRead,
+)
 from app.modules.pedido.unit_of_work import PedidoUnitOfWork
 from app.modules.producto.service import ProductoService
 from app.modules.usuarios.schemas import UserPublic
@@ -57,6 +66,7 @@ EVENTOS_WS = {
 
 logger = logging.getLogger(__name__)
 
+
 class PedidoService:
 
     def __init__(self, session: Session) -> None:
@@ -68,11 +78,10 @@ class PedidoService:
     def pedido_pertenece_a_usuario(self, pedido_id: int, usuario_id: int) -> bool:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = uow.pedidos.get_by_id(pedido_id)
-
             return pedido is not None and pedido.usuario_id == usuario_id
 
     # ── Helpers privados ──────────────────────────────────────────────────────
-  
+
     def _get_or_404(self, uow: PedidoUnitOfWork, pedido_id: int) -> Pedido:
         pedido = uow.pedidos.get_by_id(pedido_id)
 
@@ -81,9 +90,8 @@ class PedidoService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Pedido con id={pedido_id} no encontrado",
             )
-        
-        return pedido
 
+        return pedido
 
     def _validar_forma_pago(self, forma_pago_codigo: str, uow: PedidoUnitOfWork) -> None:
         forma_pago = uow.formas_pago.get_by_id(forma_pago_codigo)
@@ -99,15 +107,13 @@ class PedidoService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"La forma de pago '{forma_pago_codigo}' no está habilitada",
             )
-        
-        
+
     def _validar_direccion_requerida(self, forma_pago_codigo: str, direccion_id: Optional[int]) -> None:
         if forma_pago_codigo in FORMAS_PAGO_CON_ENVIO and direccion_id is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"La forma de pago '{forma_pago_codigo}' requiere una dirección de entrega.",
             )
-
 
     def _validar_y_construir_detalles(self, items: list, uow: PedidoUnitOfWork) -> list[dict]:
         ids = [i.producto_id for i in items]
@@ -160,7 +166,6 @@ class PedidoService:
 
         return detalles_data
 
-
     def _validar_direccion(self, direccion_id: int, usuario_id: int, uow: PedidoUnitOfWork) -> None:
         direccion: DireccionPublic = uow.direcciones.get_by_id(direccion_id)
 
@@ -169,13 +174,12 @@ class PedidoService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Dirección {direccion_id} no encontrada",
             )
-        
+
         if direccion.usuario_id != usuario_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="La dirección no pertenece al usuario",
             )
-
 
     def _to_pedido_detail(self, pedido: Pedido) -> PedidoDetail:
         return PedidoDetail(
@@ -217,7 +221,7 @@ class PedidoService:
             pagos=[
                 PagoRead(
                     id=p.id,
-                    monto=p.transaction_amount,     
+                    monto=p.transaction_amount,
                     mp_payment_id=p.mp_payment_id,
                     mp_status=p.mp_status,
                     creado_en=p.created_at,
@@ -225,7 +229,6 @@ class PedidoService:
                 for p in pedido.pagos
             ],
         )
-
 
     def _to_pedido_read(self, pedido: Pedido) -> PedidoRead:
         return PedidoRead(
@@ -238,13 +241,11 @@ class PedidoService:
             created_at=pedido.created_at,
         )
 
-
     def _calcular_costo_envio(self, subtotal: Decimal) -> Decimal:
         UMBRAL_ENVIO_GRATIS = Decimal("10000")
         COSTO_ENVIO_FIJO    = Decimal("500")
-        
-        return Decimal("0") if subtotal >= UMBRAL_ENVIO_GRATIS else COSTO_ENVIO_FIJO
 
+        return Decimal("0") if subtotal >= UMBRAL_ENVIO_GRATIS else COSTO_ENVIO_FIJO
 
     async def _emit_ws(self, dueno_id: int, pedido: PedidoRead, event_type: str) -> None:
         try:
@@ -261,7 +262,6 @@ class PedidoService:
         except Exception:
             logger.exception("Fallo emitiendo WS para pedido %s", pedido.id)
 
-
     def _aplicar_transicion(
         self,
         uow: PedidoUnitOfWork,
@@ -271,7 +271,7 @@ class PedidoService:
         motivo: Optional[str],
     ) -> None:
         estado_actual = pedido.estado_codigo
- 
+
         if destino == ESTADO["CANCELADO"]:
             for detalle in pedido.detalles:
                 producto = uow.productos.get_with_lock(detalle.producto_id)
@@ -282,7 +282,7 @@ class PedidoService:
         pedido.estado_codigo = destino
         pedido.updated_at = datetime.now(timezone.utc)
         uow.pedidos.add(pedido)
- 
+
         uow.historial.add(HistorialEstadoPedido(
             pedido_id=pedido.id,
             estado_desde=estado_actual,
@@ -290,23 +290,22 @@ class PedidoService:
             usuario_id=usuario_id,
             motivo=motivo,
         ))
- 
+
         logger.info(
             "FSM: usuario=%s pedido=%s '%s' → '%s'",
             usuario_id, pedido.id, estado_actual, destino,
         )
 
-    #──────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────
 
     async def crear_pedido(self, usuario_id: int, data: CrearPedidoRequest) -> PedidoRead:
         with PedidoUnitOfWork(self._session) as uow:
             self._validar_forma_pago(data.forma_pago_codigo, uow)
             self._validar_direccion_requerida(data.forma_pago_codigo, data.direccion_id)
 
-            if  data.direccion_id is not None:
+            if data.direccion_id is not None:
                 self._validar_direccion(data.direccion_id, usuario_id, uow)
-                
-            
+
             detalles_data = self._validar_y_construir_detalles(data.items, uow)
 
             subtotal = sum(i["subtotal_snap"] for i in detalles_data)
@@ -334,10 +333,10 @@ class PedidoService:
             uow.historial.add(
                 HistorialEstadoPedido(
                     pedido_id=pedido.id,
-                    estado_desde=None,   
+                    estado_desde=None,
                     estado_hacia=ESTADO["PENDIENTE"],
                     usuario_id=usuario_id,
-                    motivo="Pedido creado",             
+                    motivo="Pedido creado",
                 )
             )
 
@@ -346,7 +345,6 @@ class PedidoService:
 
         await self._emit_ws(dueno_id, result, event_type=EVENTOS_WS[result.estado_codigo])
         return result
-  
 
     def obtener_pedidos(
         self,
@@ -381,24 +379,22 @@ class PedidoService:
 
             return PaginatedPedidos(
                 items=[self._to_pedido_read(p) for p in pedidos],
-                 total=total,
-            )   
-        
+                total=total,
+            )
 
     def obtener_pedido(self, pedido_id: int, usuario: UserPublic) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = self._get_or_404(uow, pedido_id)
 
             es_admin = "ADMIN" in {r.upper() for r in usuario.roles}
- 
+
             if not es_admin and pedido.usuario_id != usuario.id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para ver este pedido",
                 )
-            
+
             return self._to_pedido_detail(pedido)
-        
 
     async def avanzar_pedido(self, pedido_id: int, data: AvanzarEstadoRequest, usuario: UserPublic) -> PedidoRead:
         with PedidoUnitOfWork(self._session) as uow:
@@ -414,24 +410,22 @@ class PedidoService:
 
             roles = {r.upper().strip() for r in usuario.roles}
             roles_permitidos = PERMISOS_TRANSICION.get((origen, destino))
- 
+
             if roles_permitidos is not None and not (roles & roles_permitidos):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"No tenés permiso para la transición '{origen}' → '{destino}'.",
                 )
-            
+
             self._aplicar_transicion(uow, pedido, destino, usuario.id, data.motivo)
-            
+
             result = self._to_pedido_read(pedido)
             dueno_id = pedido.usuario_id
 
-
         await self._emit_ws(dueno_id, result, event_type=EVENTOS_WS[result.estado_codigo])
         return result
-        
 
-# consultar
+    # consultar
     async def cancelar_pedido(self, pedido_id: int, observacion: Optional[str], usuario: UserPublic) -> PedidoDetail:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = self._get_or_404(uow, pedido_id)
@@ -453,7 +447,7 @@ class PedidoService:
                     detail=f"No tenés permiso para cancelar un pedido "
                            f"en estado '{estado_actual}'.",
                 )
-            
+
             es_staff = bool(roles & {"PEDIDOS", "ADMIN"})
 
             if not es_staff and pedido.usuario_id != usuario.id:
@@ -461,34 +455,32 @@ class PedidoService:
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para cancelar este pedido.",
                 )
- 
+
             self._aplicar_transicion(
                 uow, pedido, ESTADO["CANCELADO"], usuario.id, observacion
             )
- 
+
             result = self._to_pedido_detail(pedido)
             dueno_id = pedido.usuario_id
- 
+
         await self._emit_ws(dueno_id, result, event_type=EVENTOS_WS[result.estado_codigo])
         return result
-        
 
     def obtener_historial_pedido(self, pedido_id: int, usuario: UserPublic) -> list[HistorialEstadoRead]:
         with PedidoUnitOfWork(self._session) as uow:
             pedido = self._get_or_404(uow, pedido_id)
- 
+
             es_admin = "ADMIN" in {r.upper() for r in usuario.roles}
- 
+
             if not es_admin and pedido.usuario_id != usuario.id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para ver el historial de este pedido",
                 )
- 
+
             historial = sorted(pedido.historial, key=lambda h: h.created_at)
 
             return [HistorialEstadoRead.model_validate(h) for h in historial]
-        
 
     async def cancelar_pedido_propio(self, pedido_id, usuario, motivo=None) -> PedidoRead:
         with PedidoUnitOfWork(self._session) as uow:

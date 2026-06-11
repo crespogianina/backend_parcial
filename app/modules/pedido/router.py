@@ -47,7 +47,7 @@ def _pedido_pertenece_a(pedido_id: int, usuario_id: int) -> bool:
     summary="Listar pedido propios (CLIENT) o todos (ADMIN/PEDIDOS)",
 )
 def obtener_pedidos(
-    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "CLIENT", "PEDIDOS"]))],  
+    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "CLIENT", "PEDIDOS"]))],
     service: PedidoService = Depends(get_pedido_service),
     estado: Annotated[Optional[str], Query()] = None,
     fecha_desde: Annotated[Optional[date], Query()] = None,
@@ -73,10 +73,10 @@ def obtener_pedidos(
 )
 def obtener_pedido_id(
     id: Annotated[int, Path(gt=0)],
-    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "CLIENT"]))], 
+    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "CLIENT"]))],
     service: PedidoService = Depends(get_pedido_service),
 ) -> PedidoDetail:
-    return service.obtener_pedido(id, usuario)   
+    return service.obtener_pedido(id, usuario)
 
 
 @router.post(
@@ -87,7 +87,7 @@ def obtener_pedido_id(
 )
 async def crear_pedido(
     data: CrearPedidoRequest,
-    usuario: Annotated[UserPublic, Depends(require_role(["CLIENT"]))], 
+    usuario: Annotated[UserPublic, Depends(require_role(["CLIENT"]))],
     service: PedidoService = Depends(get_pedido_service),
 ) -> PedidoRead:
     return await service.crear_pedido(usuario.id, data)
@@ -101,14 +101,13 @@ async def crear_pedido(
 )
 async def avanzar_pedido(
     id: Annotated[int, Path(gt=0)],
-    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "PEDIDOS"]))], 
+    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "PEDIDOS"]))],
     data: AvanzarEstadoRequest,
     service: PedidoService = Depends(get_pedido_service),
 ) -> PedidoRead:
-    return await service.avanzar_pedido(id, data, usuario)   
+    return await service.avanzar_pedido(id, data, usuario)
 
 
-# consultar
 @router.patch(
     "/{id}/cancelar",
     response_model=PedidoDetail,
@@ -117,7 +116,7 @@ async def avanzar_pedido(
 )
 async def cancelar_pedido(
     id: Annotated[int, Path(gt=0)],
-    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "PEDIDOS"]))], 
+    usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "PEDIDOS"]))],
     observacion: Annotated[Optional[str], Body(embed=True)] = None,
     service: PedidoService = Depends(get_pedido_service),
 ) -> PedidoDetail:
@@ -134,7 +133,6 @@ def obtener_historial_pedido(
     id: Annotated[int, Path(gt=0)],
     usuario: Annotated[UserPublic, Depends(get_current_active_user)],
     service: PedidoService = Depends(get_pedido_service),
-    summary="Historial completo",
 ) -> list[HistorialEstadoRead]:
     return service.obtener_historial_pedido(id, usuario)
 
@@ -209,4 +207,6 @@ async def pedidos_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception:
+        manager.disconnect(websocket)
+    finally:
         manager.disconnect(websocket)

@@ -5,6 +5,7 @@ from sqlmodel import Session
 from .unit_of_work import CategoriaUnitOfWork
 from .models import Categoria
 from .schemas import CategoriaCreate, CategoriaTreeRead, CategoriaUpdate, CategoriaPublic, CategoriaList
+from app.modules.uploads.service import UploadService
 
 class CategoriaService:
 
@@ -12,6 +13,7 @@ class CategoriaService:
         self._session = session
 
     # ── Helpers privados ──────────────────────────────────────────────────────
+    
     def _get_or_404(self, uow: CategoriaUnitOfWork, categoria_id: int) -> Categoria:
         categoria = uow.categorias.get_by_id(categoria_id)
 
@@ -135,6 +137,19 @@ class CategoriaService:
         return result
 
 
+    def actualizar_imagen(self, categoria_id: int, imagen_url: Optional[str]) -> CategoriaPublic:
+        with CategoriaUnitOfWork(self._session) as uow:
+            categoria = self._get_or_404(uow, categoria_id)
+
+            categoria.imagen_url = imagen_url.strip() if imagen_url and imagen_url.strip() else None
+            categoria.updated_at = datetime.now(timezone.utc)
+            uow.categorias.add(categoria)
+
+            result = CategoriaPublic(**categoria.model_dump(), activo=categoria.deleted_at is None)
+
+        return result
+
+
     def soft_delete(self, categoria_id: int) -> None:
         with CategoriaUnitOfWork(self._session) as uow:
             categoria = uow.categorias.get_by_id(categoria_id)
@@ -152,7 +167,10 @@ class CategoriaService:
                 )
                 
             self._validate_no_active_children(categoria)
-            
+
+            if categoria.imagen_url:
+                UploadService().delete_image_by_url(categoria.imagen_url)
+
             categoria.deleted_at = datetime.now(timezone.utc)
             uow.categorias.add(categoria)
 
