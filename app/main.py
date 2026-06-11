@@ -8,15 +8,19 @@ from app.modules.ingrediente.router import router as ingrediente_router
 from app.modules.usuarios.router import router as usuario_router
 from app.modules.direcciones.router import router as direccion_router
 from app.modules.pedido.router import router as pedido_router
+from app.db import seed
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        create_db_and_tables()
-    except Exception:
-        pass
-    yield
+    create_db_and_tables()
 
+    try:
+        seed.run() 
+    except Exception as e:
+        print(f"Error al cargar el seed: {e}")
+
+    yield
 
 app = FastAPI(
     title="Integrador",
