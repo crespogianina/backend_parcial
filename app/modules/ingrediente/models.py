@@ -21,7 +21,7 @@ class Ingrediente(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     deleted_at: Optional[datetime] = Field(default=None)
 
-    producto_ingredientes: List["ProductoIngrediente"] = Relationship(
-        back_populates="ingrediente"
-    )
-    unidad_medida: UnidadMedida = Relationship(back_populates="ingredientes")
+    #producto_ingredientes: List["ProductoIngrediente"] = Relationship(
+    #    back_populates="ingrediente"
+    #)
+    #unidad_medida: UnidadMedida = Relationship(back_populates="ingredientes")

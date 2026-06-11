@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     postgres_host: str
     postgres_port: int
     postgres_db: str
-    postgres_db: str
 
     @computed_field
     @property
@@ -24,6 +23,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str                    
     ALGORITHM:  str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    AUTH_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    AUTH_RATE_LIMIT_WINDOW_MINUTES: int = 15
 
     MP_ACCESS_TOKEN: Optional[str] = None
     MP_PUBLIC_KEY: Optional[str] = None

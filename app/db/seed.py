@@ -15,7 +15,6 @@ ROLES = [
 
 USUARIOS = [
     {
-        "username": "admin",
         "nombre":   "Administrador",
         "apellido": "Sistema",
         "email":    "admin@foodstore.com",
@@ -23,7 +22,6 @@ USUARIOS = [
         "roles":    ["ADMIN"],
     },
     {
-        "username": "juan",
         "nombre":   "Juan",
         "apellido": "Pérez",
         "email":    "juan@example.com",
@@ -72,15 +70,14 @@ def seed_usuarios(session: Session) -> None:
     print("\n── Usuarios ──")
     for data in USUARIOS:
         existing = session.exec(
-            select(Usuario).where(Usuario.username == data["username"])
+            select(Usuario).where(Usuario.email == data["email"])
         ).first()
 
         if existing:
-            print(f"  [=] Ya existe: {data['username']}")
+            print(f"  [=] Ya existe: {data['email']}")
             usuario = existing
         else:
             usuario = Usuario(
-                username=data["username"],
                 nombre=data["nombre"],
                 apellido=data["apellido"],
                 email=data["email"],
@@ -89,7 +86,7 @@ def seed_usuarios(session: Session) -> None:
             session.add(usuario)
             session.commit()
             session.refresh(usuario)
-            print(f"  [+] Creado:    {data['username']} / {data['password']}")
+            print(f"  [+] Creado:    {data['email']} / {data['password']}")
 
         for rol_codigo in data["roles"]:
             existing_rol = session.exec(
@@ -161,8 +158,8 @@ def run() -> None:
         seed_unidades_medida(session)
 
     print("\n── Usuarios disponibles ──")
-    print("  admin / Admin1234!  → ADMIN")
-    print("  juan  / Juan1234!   → CLIENT")
+    print("  admin@foodstore.com / Admin1234!  → ADMIN")
+    print("  juan@example.com   / Juan1234!   → CLIENT")
     print()
 
 

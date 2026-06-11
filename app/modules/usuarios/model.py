@@ -25,7 +25,6 @@ class Usuario(SQLModel, table=True):
 
     nombre: str = Field(nullable=False, max_length=80)
     apellido: str = Field(nullable=False, max_length=80)
-    username: str = Field(unique=True, nullable=False, max_length=80)
     email: str = Field(unique=True, nullable=False, max_length=254)
     celular: Optional[str] = Field(default=None, max_length=20)
     password_hash: str = Field(sa_column=Column(CHAR(60), nullable=False))
@@ -43,6 +42,7 @@ class Usuario(SQLModel, table=True):
             "foreign_keys": "[UsuarioRol.usuario_id]",
         }
     )
+    refresh_tokens: list["RefreshToken"] = Relationship(back_populates="usuario")
     pedidos: list["Pedido"] = Relationship(back_populates="usuario") 
     historial_pedidos: list["HistorialEstadoPedido"] = Relationship(back_populates="usuario") 
 
@@ -73,3 +73,19 @@ class UsuarioRol(SQLModel, table=True):
         }
     )
     rol: Optional["Rol"] = Relationship(back_populates="usuario_roles")
+
+
+class RefreshToken(SQLModel, table=True):
+    __tablename__ = "refresh_tokens"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    token_hash: str = Field(sa_column=Column(CHAR(64), unique=True, nullable=False))
+    usuario_id: int = Field(sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=False))
+    expires_at: datetime = Field(nullable=False)
+    revoked_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+
+    usuario: Optional["Usuario"] = Relationship(
+        back_populates="refresh_tokens",
+        sa_relationship_kwargs={"foreign_keys": "[RefreshToken.usuario_id]"},
+    )

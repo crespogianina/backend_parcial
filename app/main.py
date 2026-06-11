@@ -5,7 +5,8 @@ from app.core.database import create_db_and_tables
 from app.modules.producto.router import router as producto_router
 from app.modules.categoria.router import router as categoria_router
 from app.modules.ingrediente.router import router as ingrediente_router
-from app.modules.usuarios.router import router as usuario_router
+from app.modules.usuarios.router import router as auth_router
+from app.modules.usuarios.admin_router import router as usuario_admin_router
 from app.modules.direcciones.router import router as direccion_router
 from app.modules.pedido.router import router as pedido_router
 
@@ -34,7 +35,8 @@ app.add_middleware(
 
 api_v1 = APIRouter(prefix="/api/v1")
 
-api_v1.include_router(usuario_router, prefix="/usuario", tags=["usuarios"])
+api_v1.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_v1.include_router(usuario_admin_router, prefix="/usuario", tags=["usuarios"])
 api_v1.include_router(categoria_router, prefix="/categorias", tags=["categorias"])
 api_v1.include_router(ingrediente_router, prefix="/ingredientes", tags=["ingredientes"])
 api_v1.include_router(producto_router, prefix="/productos", tags=["productos"])

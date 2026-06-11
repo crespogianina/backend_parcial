@@ -1,11 +1,12 @@
-from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, Response, status
-from fastapi.params import Query
-from fastapi.security import OAuth2PasswordRequestForm
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import Session
+
 from app.core.database import get_session
-from app.core.deps import get_current_active_user, require_role
-from app.modules.usuarios.schemas import UserCreate, UserPublic
+from app.core.deps import get_current_active_user
+from app.core.rate_limit import check_auth_rate_limit, record_auth_failure
+from app.modules.usuarios.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
 from app.modules.usuarios.service import UsuarioService
 
 router = APIRouter()
@@ -15,69 +16,53 @@ def get_usuario_service(session: Session = Depends(get_session)) -> UsuarioServi
     return UsuarioService(session)
 
 
-@router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
-def register(user_in: UserCreate, svc: UsuarioService = Depends(get_usuario_service)) -> UserPublic:
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def register(
+    user_in: RegisterRequest,
+    svc: UsuarioService = Depends(get_usuario_service),
+) -> UserResponse:
     return svc.register(user_in)
 
 
-@router.post("/token")
-def login( 
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    response: Response, svc: UsuarioService = Depends(get_usuario_service)
-) -> dict:
-    token = svc.authenticate(form_data.username, form_data.password)
-
-    response.set_cookie(
-        key="access_token",
-        value=token.access_token,
-        httponly=True,
-        max_age=1800,
-        samesite="lax",
-        secure=False,
-    )
-
-    return {
-        "mensaje": "Login exitoso. Sesión iniciada.",
-        "access_token": token.access_token,
-        "token_type": "bearer",
-    }
+@router.post("/login", response_model=TokenResponse)
+def login(
+    request: Request,
+    user_in: LoginRequest,
+    svc: UsuarioService = Depends(get_usuario_service),
+) -> TokenResponse:
+    check_auth_rate_limit(request)
+    try:
+        return svc.login(user_in)
+    except HTTPException as exc:
+        if exc.status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_400_BAD_REQUEST,
+        ):
+            record_auth_failure(request)
+        raise
 
 
-@router.post("/logout")
-def logout(response: Response) -> dict:
-    response.delete_cookie(key="access_token", httponly=True, samesite="lax", secure=False)
-    return {"mensaje": "Sesión cerrada exitosamente"}
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(
+    refresh_in: RefreshRequest,
+    svc: UsuarioService = Depends(get_usuario_service),
+) -> TokenResponse:
+    return svc.refresh(refresh_in)
 
 
-@router.get("/me", response_model=UserPublic)
-def read_me(current_user: Annotated[UserPublic, Depends(get_current_active_user)]) -> UserPublic:
-    return current_user
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
+    refresh_in: RefreshRequest,
+    svc: UsuarioService = Depends(get_usuario_service),
+) -> Response:
+    svc.logout(current_user.id, refresh_in.refresh_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/privado")
-def ruta_privada(current_user: Annotated[UserPublic, Depends(get_current_active_user)]) -> dict:
-    return {
-        "mensaje": f"¡Hola, {current_user.nombre}! Accediste a una ruta privada.",
-        "tus_roles": current_user.roles,
-    }
-
-
-@router.get("/admin/usuarios", response_model=list[UserPublic])
-def list_users(
-    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
-    rol: Annotated[Optional[str], Query(description="Filtrar por rol: ADMIN, STOCK, PEDIDOS, CLIENT")] = None,
-    offset: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
-    svc: UsuarioService = Depends(get_usuario_service)
-) -> list[UserPublic]:
-    return svc.list_all(rol=rol, offset=offset, limit=limit)
-
-
-@router.post("/admin/usuarios/{user_id}/desactivar", response_model=UserPublic)
-def deactivate_user( user_id: int, _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: UsuarioService = Depends(get_usuario_service)) -> UserPublic:
-    return svc.set_disabled(user_id, disabled=True)
-
-
-@router.post("/admin/usuarios/{user_id}/activar", response_model=UserPublic)
-def activate_user( user_id: int, _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: UsuarioService = Depends(get_usuario_service)) -> UserPublic:
-    return svc.set_disabled(user_id, disabled=False)
+@router.get("/me", response_model=UserResponse)
+def read_me(
+    current_user: Annotated[UserResponse, Depends(get_current_active_user)],
+    svc: UsuarioService = Depends(get_usuario_service),
+) -> UserResponse:
+    return svc.get_me(current_user.id)

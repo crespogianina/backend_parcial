@@ -37,9 +37,9 @@ class ProductoIngrediente(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     
-    producto: Optional["Producto"] = Relationship(back_populates="producto_ingredientes")
-    ingrediente: Optional["Ingrediente"] = Relationship(back_populates="producto_ingredientes")
-    unidad_medida: "UnidadMedida" = Relationship(back_populates="producto_ingredientes")
+    #producto: Optional["Producto"] = Relationship(back_populates="producto_ingredientes")
+    #ingrediente: Optional["Ingrediente"] = Relationship(back_populates="producto_ingredientes")
+    #unidad_medida: "UnidadMedida" = Relationship(back_populates="producto_ingredientes")
 
 
 class Producto(SQLModel, table=True):
@@ -65,9 +65,9 @@ class Producto(SQLModel, table=True):
     producto_categorias: List["ProductoCategoria"] = Relationship(
         back_populates="producto"
     )
-    producto_ingredientes: List["ProductoIngrediente"] = Relationship(
-        back_populates="producto"
-    )
+    #producto_ingredientes: List["ProductoIngrediente"] = Relationship(
+    #    back_populates="producto"
+    #)
     detalles_pedido: List["DetallePedido"] = Relationship(
     back_populates="producto",
     sa_relationship_kwargs={
@@ -91,5 +91,5 @@ class UnidadMedida(SQLModel, table=True):
     deleted_at: Optional[datetime] = Field(default=None)
 
     productos: List["Producto"] = Relationship(back_populates="unidad_medida")
-    ingredientes: List["Ingrediente"] = Relationship(back_populates="unidad_medida")
-    productos_ingredientes: List[ProductoIngrediente] =  Relationship(back_populates="unidad_medida")
+    #ingredientes: List["Ingrediente"] = Relationship(back_populates="unidad_medida")
+    #productos_ingredientes: List[ProductoIngrediente] =  Relationship(back_populates="unidad_medida")

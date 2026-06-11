@@ -1,38 +1,54 @@
 from datetime import datetime
-from typing import Optional
 
-from pydantic import EmailStr
-from sqlmodel import SQLModel, Field
+from pydantic import EmailStr, Field
+from sqlmodel import SQLModel
 
 
-class UserCreate(SQLModel):
-    nombre: str = Field(max_length=80)
-    apellido: str = Field(max_length=80)
-    username: str = Field(max_length=80)
+class RegisterRequest(SQLModel):
+    nombre: str = Field(min_length=2, max_length=80)
+    apellido: str = Field(min_length=2, max_length=80)
     email: EmailStr
-    celular: Optional[str] = Field(default=None, max_length=20)
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=128)
 
 
-class UserPublic(SQLModel):
-    id: int
-    nombre: str
-    apellido: str
-    username: str
-    email: str
-    celular: Optional[str] = None
-    deleted_at: Optional[datetime] = None
-
-    roles: list[str] = []
+class LoginRequest(SQLModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
 
 
-class Token(SQLModel):
+class RefreshRequest(SQLModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class TokenResponse(SQLModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
 
 
+class UserResponse(SQLModel):
+    id: int
+    nombre: str
+    apellido: str
+    email: EmailStr
+    roles: list[str]
+    created_at: datetime
+
+
+class CurrentUser(UserResponse):
+    username: str | None = None
+    celular: str | None = None
+    deleted_at: datetime | None = None
+
+
+# Compatibilidad temporal con el resto del proyecto mientras se migra la capa auth.
+UserCreate = RegisterRequest
+UserPublic = CurrentUser
+Token = TokenResponse
+
+
 class TokenPayload(SQLModel):
-    sub: str     
-    roles: list[str]  
-    exp: int          
+    sub: str
+    roles: list[str]
+    exp: int

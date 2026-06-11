@@ -31,17 +31,18 @@ class ConnectionManager:
 
  # ──────────────────────────────────────────────────────────────────────────
 
-    async def connect(self, websocket: WebSocket, role: str, user_id: int) -> None:
+    async def connect(self, websocket: WebSocket, roles: list[str], user_id: int) -> None:
         await websocket.accept()
 
-        role_key = f"role:{role.lower()}"
-        self._join_room(websocket, role_key)
+        for role in roles:
+            self._join_room(websocket, f"role:{role.lower()}")
+
+        self._join_room(websocket, f"user:{user_id}")
 
         logger.info(
-            f"Conexión WebSocket aceptada. user_id={user_id}, role={role}, "
-            f"room={role_key}. Total rooms activas: {len(self.rooms)}"
+            f"WS aceptado. user_id={user_id}, roles={roles}. "
+            f"Total rooms activas: {len(self.rooms)}"
         )
-
 
     def disconnect(self, websocket: WebSocket) -> None:
         rooms = self.socket_rooms.pop(websocket, set())
@@ -136,11 +137,16 @@ class ConnectionManager:
                 self.disconnect(connection)
 
 
-    async def broadcast_pedido(self, pedido_id: int, evento: dict[str, Any]) -> None:
-        rooms = [f"order:{pedido_id}", "role:admin", "role:pedidos"]
-        logger.info(f"Broadcast {evento.get('event')} pedido={pedido_id} a {rooms}")
-
-        await self._send_to_rooms(rooms, evento)
+    async def broadcast_pedido(self, pedido_id: int, dueno_id: int, event_type: str, data: dict[str, Any]) -> None:
+        rooms = [
+            f"order:{pedido_id}",
+            f"user:{dueno_id}",
+            "role:admin",
+            "role:pedidos",
+        ]
+        
+        logger.info(f"Broadcast {event_type} pedido={pedido_id} a {rooms}")
+        await self._send_to_rooms(rooms, {"event": event_type, "data": data})
 
 
 manager = ConnectionManager()
