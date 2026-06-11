@@ -8,6 +8,8 @@ def create_db_and_tables() -> None:
     import app.modules.ingrediente.models 
     import app.modules.producto.models 
     import app.modules.usuarios.model
+    import app.modules.pago.models
+    import app.modules.pedido.models
     SQLModel.metadata.create_all(engine)
 
 
