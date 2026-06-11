@@ -1,4 +1,3 @@
-
 import logging
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -246,20 +245,38 @@ class PedidoService:
         return Decimal("0") if subtotal >= UMBRAL_ENVIO_GRATIS else COSTO_ENVIO_FIJO
 
 
-    async def _emit_ws(self, dueno_id: int, pedido: PedidoRead, event_type: str) -> None:
-        try:
-            await manager.broadcast_pedido(
-                pedido_id=pedido.id,
-                dueno_id=dueno_id,
-                event_type=event_type,
-                data={
-                    "pedido_id": pedido.id,
-                    "estado": pedido.estado_codigo,
-                    "total": str(pedido.total),
-                },
-            )
-        except Exception:
-            logger.exception("Fallo emitiendo WS para pedido %s", pedido.id)
+    async def _emit_ws(
+            self,
+            *,
+            pedido_id: int,
+            dueno_id: int,
+            estado_anterior: Optional[str],
+            estado_nuevo: str,
+            usuario_id: Optional[int],      
+            motivo: Optional[str] = None,
+            event: Optional[str] = None,    
+        ) -> None:
+            if event is None:
+                event = (
+                    "pedido_cancelado"
+                    if estado_nuevo == ESTADO["CANCELADO"]
+                    else "estado_cambiado"
+                )
+
+            evento = {
+                "event": event,
+                "pedido_id": pedido_id,
+                "estado_anterior": estado_anterior,
+                "estado_nuevo": estado_nuevo,
+                "usuario_id": usuario_id,
+                "motivo": motivo,
+                "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+
+            try:
+                await manager.broadcast_pedido(pedido_id=pedido_id, dueno_id=dueno_id, evento=evento)
+            except Exception:
+                logger.exception("Fallo emitiendo WS para pedido %s", pedido_id)
 
 
     def _aplicar_transicion(
@@ -342,9 +359,13 @@ class PedidoService:
             )
 
             result = self._to_pedido_read(pedido)
-            dueno_id = usuario_id
 
-        await self._emit_ws(dueno_id, result, event_type=EVENTOS_WS[result.estado_codigo])
+        await self._emit_ws(
+                pedido_id=result.id, dueno_id=usuario_id,
+                estado_anterior=None, estado_nuevo=ESTADO["PENDIENTE"],
+                usuario_id=usuario_id, motivo="Pedido creado",
+            )
+
         return result
   
 
@@ -426,8 +447,12 @@ class PedidoService:
             result = self._to_pedido_read(pedido)
             dueno_id = pedido.usuario_id
 
+            await self._emit_ws(
+                pedido_id=result.id, dueno_id=dueno_id,
+                estado_anterior=origen, estado_nuevo=destino,
+                usuario_id=usuario.id, motivo=data.motivo,
+            )
 
-        await self._emit_ws(dueno_id, result, event_type=EVENTOS_WS[result.estado_codigo])
         return result
         
 
@@ -502,7 +527,8 @@ class PedidoService:
                     400,
                     f"Un pedido en estado '{pedido.estado_codigo}' ya no puede cancelarse desde el cliente.",
                 )
-
+            estado_anterior = pedido.estado_codigo
+            
             self._aplicar_transicion(
                 uow, pedido, ESTADO["CANCELADO"], usuario.id,
                 motivo or "Cancelado por el cliente",
@@ -511,5 +537,9 @@ class PedidoService:
             result = self._to_pedido_read(pedido)
             dueno_id = pedido.usuario_id
 
-        await self._emit_ws(dueno_id, result, event_type=EVENTOS_WS[result.estado_codigo])
+            await self._emit_ws(
+                pedido_id=result.id, dueno_id=dueno_id,
+                estado_anterior=estado_anterior, estado_nuevo=ESTADO["CANCELADO"],
+                usuario_id=usuario.id, motivo=motivo or "Cancelado por el cliente",
+            )
         return result
