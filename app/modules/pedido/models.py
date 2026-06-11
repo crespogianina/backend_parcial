@@ -128,10 +128,13 @@ class HistorialEstadoPedido(SQLModel, table=True):
     id: Optional[int] = Field(default=None,sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
 
     pedido_id: int = Field(sa_column=Column(BigInteger, ForeignKey("pedidos.id"), nullable=False))
-    estado_desde: str = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=False))
-    estado_hacia: Optional[str] = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=True))
+    estado_desde: Optional[str] = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=True))
+    estado_hacia: str = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=False))
 
-    usuario_id: int = Field(sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=False))
+    usuario_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=True),
+    )
 
     motivo: Optional[str] = Field( default=None, sa_column=Column(Text, nullable=True))
     
@@ -145,7 +148,7 @@ class HistorialEstadoPedido(SQLModel, table=True):
         back_populates="historial_estado_desde",
         sa_relationship_kwargs={ "foreign_keys": "[HistorialEstadoPedido.estado_desde]", "lazy": "joined"}
     )
-    estado_hacia_rel: Optional["EstadoPedido"] = Relationship(
+    estado_hacia_rel: "EstadoPedido" = Relationship(
         back_populates="historial_estado_hacia",
         sa_relationship_kwargs={
             "foreign_keys": "[HistorialEstadoPedido.estado_hacia]","lazy": "joined"}

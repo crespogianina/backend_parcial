@@ -39,6 +39,8 @@ class PagoService:
 
 
     def _crear_preferencia_mp(self, pedido: Pedido) -> dict:
+        import mercadopago
+        
         sdk = self._get_sdk()
         ngrok_url = settings.NGROK_URL or "http://localhost:8000"
 
