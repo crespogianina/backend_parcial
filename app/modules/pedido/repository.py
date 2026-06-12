@@ -87,11 +87,18 @@ class PedidoRepository(BaseRepository[Pedido]):
 
 
     def count_all_pedidos(
-            self, 
-            usuario_id: Optional[int] = None,
-            estado: Optional[str] = None,
-            fecha_desde: Optional[date] = None,
-            fecha_hasta: Optional[date] = None
-        ) -> int:
-        statement = self._apply_filters(select(func.count()).select_from(Pedido), estado, usuario_id, fecha_desde, fecha_hasta)
+        self,
+        usuario_id: Optional[int] = None,
+        estado: Optional[str] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+    ) -> int:
+        statement = self._apply_filters(
+            select(func.count()).select_from(Pedido),
+            estado=estado,
+            usuario_id=usuario_id,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+        )
+
         return self.session.exec(statement).one()

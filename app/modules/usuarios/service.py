@@ -18,24 +18,26 @@ class UsuarioService:
     # ── Helpers ──────────────────────────────────────────────────────
 
     def autenticar_websocket(self, token: str) -> tuple[Optional[tuple[int, str]], str]:
-        payload, motivo = decode_token_con_motivo(token)
+        try:
+            payload, motivo = decode_token_con_motivo(token)
 
-        if payload is None:
-            return None, motivo
+            if payload is None:
+                return None, motivo
 
-        username = payload.get("sub")
+            username = payload.get("sub")
 
-        if not username:
-            return None, "invalido"
+            if not username:
+                return None, "invalido"
 
-        with UsuarioUnitOfWork(self._session) as uow:
-            user = uow.usuarios.get_by_username(username)
+            with UsuarioUnitOfWork(self._session) as uow:
+                user = uow.usuarios.get_by_username(username)
 
-            if not user or user.disabled:
-                return None, "usuario_inactivo"
+                if not user or user.deleted_at is not None:
+                    return None
 
-            return (user.id, user.role), "ok"
-
+                return (user.id, user.role), "ok"
+        except Exception:
+            return None
     # ────────────────────────────────────────────────────────
 
     def get_by_username(self, username: str) -> UserPublic | None:

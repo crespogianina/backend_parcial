@@ -19,7 +19,7 @@ from app.modules.usuarios.schemas import UserPublic
 from app.modules.usuarios.service import UsuarioService
 from app.core.websocket import manager
 
-router = APIRouter(prefix="/pedidos", tags=["pedidos"])
+router = APIRouter()
 
 STAFF_ROLES = {"ADMIN", "PEDIDOS"}
 
@@ -154,7 +154,7 @@ async def cancelar_pedido_propio(
 
 
 @router.websocket("/ws")
-async def pedidos_websocket(websocket: WebSocket, usuario: Annotated[UserPublic, Depends(require_role(["ADMIN", "PEDIDOS"]))] ):
+async def pedidos_websocket(websocket: WebSocket):
     token = websocket.query_params.get("token") or websocket.cookies.get("access_token")
 
     if not token:
