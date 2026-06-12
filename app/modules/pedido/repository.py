@@ -93,5 +93,5 @@ class PedidoRepository(BaseRepository[Pedido]):
             fecha_desde: Optional[date] = None,
             fecha_hasta: Optional[date] = None
         ) -> int:
-        statement = self._apply_filters(select(func.count()).select_from(Pedido), usuario_id, estado, fecha_desde, fecha_hasta)
+        statement = self._apply_filters(select(func.count()).select_from(Pedido), estado, usuario_id, fecha_desde, fecha_hasta)
         return self.session.exec(statement).one()
