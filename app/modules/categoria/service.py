@@ -170,6 +170,7 @@ class CategoriaService:
 
             if categoria.imagen_url:
                 UploadService().delete_image_by_url(categoria.imagen_url)
+                categoria.imagen_url = None
 
             categoria.deleted_at = datetime.now(timezone.utc)
             uow.categorias.add(categoria)
