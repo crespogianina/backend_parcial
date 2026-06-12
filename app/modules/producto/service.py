@@ -177,6 +177,7 @@ class ProductoService:
 
         return min(unidades_posibles)
     
+    
     def _to_producto_public(self, producto: Producto) -> ProductoPublic:
         unidad_medida = (
             UnidadMedidaProductoRead.model_validate(producto.unidad_medida)

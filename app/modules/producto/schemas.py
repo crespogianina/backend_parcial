@@ -12,12 +12,14 @@ class IngredienteAsignar(SQLModel):
     es_removible: bool = False
     unidad_medida_id: int 
     cantidad: Decimal = Field(gt=0)
+    
 
 class UnidadMedidaProductoRead(SQLModel):
     id: int
     nombre: str
     simbolo: str
     factor: int
+
 
 class CategoriaProductoRead(SQLModel):
     id: int
@@ -47,6 +49,8 @@ class ProductoCreate(ProductoBase):
     categorias: List[CategoriaAsignar] = Field(min_length=1)  
     ingredientes: Optional[List[IngredienteAsignar]] = Field(default_factory=list)
     unidad_medida_id: Optional[int] = Field(default=None, gt=0)
+
+
 class ProductoPublic(ProductoBase):
     id: int
     activo: bool
@@ -70,6 +74,7 @@ class ProductoUpdate(SQLModel):
     categorias: Optional[List[CategoriaAsignar]] = None  
     ingredientes: Optional[List[IngredienteAsignar]] = None
     unidad_medida_id: Optional[int]= Field(gt=0, default=None) 
+
 
 class ProductoList(SQLModel):
     data: List[ProductoPublic]
