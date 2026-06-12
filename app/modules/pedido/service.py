@@ -501,7 +501,15 @@ class PedidoService:
             result = self._to_pedido_detail(pedido)
             dueno_id = pedido.usuario_id
  
-        await self._emit_ws(dueno_id, result, event_type=EVENTOS_WS[result.estado_codigo])
+        await self._emit_ws(
+            pedido_id=result.id,
+            dueno_id=dueno_id,
+            estado_anterior=estado_actual,
+            estado_nuevo=ESTADO["CANCELADO"],
+            usuario_id=usuario.id,
+            motivo=observacion,
+            event=EVENTOS_WS[ESTADO["CANCELADO"]],
+        )
         return result
         
 
