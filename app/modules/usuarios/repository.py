@@ -10,6 +10,7 @@ class UsuarioRepository(BaseRepository[Usuario]):
     def __init__(self, session: Session):
         super().__init__(session, Usuario)
 
+
     def get_by_username(self, username: str) -> Usuario | None:
         statement = select(Usuario).where(Usuario.username == username) 
         

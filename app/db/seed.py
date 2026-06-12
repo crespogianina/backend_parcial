@@ -64,12 +64,12 @@ FORMAS_PAGO = [
 ]
 
 UNIDADES_MEDIDA = [
-    {"nombre": "Kilogramo", "simbolo": "kg",  "tipo": "peso"},
-    {"nombre": "Gramo",     "simbolo": "g",   "tipo": "peso"},
-    {"nombre": "Litro",     "simbolo": "L",   "tipo": "volumen"},
-    {"nombre": "Mililitro", "simbolo": "ml",  "tipo": "volumen"},
-    {"nombre": "Unidad",    "simbolo": "ud",  "tipo": "contable"},
-    {"nombre": "Porción",   "simbolo": "porciones", "tipo": "contable"},
+    {"nombre": "Kilogramo", "simbolo": "kg",  "tipo": "peso",     "factor": 1000},
+    {"nombre": "Gramo",     "simbolo": "g",   "tipo": "peso",     "factor": 1},
+    {"nombre": "Litro",     "simbolo": "L",   "tipo": "volumen",  "factor": 1000},
+    {"nombre": "Mililitro", "simbolo": "ml",  "tipo": "volumen",  "factor": 1},
+    {"nombre": "Unidad",    "simbolo": "ud",  "tipo": "contable", "factor": 1},
+    {"nombre": "Porción",   "simbolo": "porciones", "tipo": "contable", "factor": 1},
 ]
 
 def seed_roles(session: Session) -> None:

@@ -17,6 +17,7 @@ class UnidadMedidaProductoRead(SQLModel):
     id: int
     nombre: str
     simbolo: str
+    factor: int
 
 class CategoriaProductoRead(SQLModel):
     id: int

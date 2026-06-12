@@ -1,7 +1,10 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session
+
+from app.modules.producto.models import UnidadMedida
 from .models import Ingrediente
 from .schemas import IngredienteCreate, IngredienteUpdate, IngredientePublic, IngredienteList
 from .unit_of_work import IngredienteUnitOfWork
@@ -73,12 +76,27 @@ class IngredienteService:
                 if not ingrediente or pi.cantidad <= 0:
                     continue
 
-                unidades = int(ingrediente.stock_cantidad / pi.cantidad)
+                cantidad_necesaria = self._convertir(
+                    pi.cantidad, pi.unidad_medida, ingrediente.unidad_medida
+                )
+
+                unidades = int(Decimal(ingrediente.stock_cantidad) / cantidad_necesaria)
                 unidades_posibles.append(unidades)
 
             nuevo_stock = min(unidades_posibles) if unidades_posibles else 0
             uow.ingredientes.actualizar_stock_producto(producto_id, nuevo_stock)
 
+
+    def _convertir(self, cantidad: Decimal, desde: UnidadMedida, hacia: UnidadMedida) -> Decimal:
+        if desde.id == hacia.id:
+            return cantidad
+        if desde.tipo != hacia.tipo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No se puede convertir de '{desde.simbolo}' ({desde.tipo}) a '{hacia.simbolo}' ({hacia.tipo})",
+            )
+        return cantidad * desde.factor / hacia.factor
+    
     # ─────────────────────────────────────────────────────────
 
     def create_ingrediente(self, data: IngredienteCreate) -> IngredientePublic: 

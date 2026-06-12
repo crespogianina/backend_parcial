@@ -86,7 +86,10 @@ class UnidadMedida(SQLModel, table=True):
     nombre: str = Field(min_length=1, max_length=50, index=True, unique=True, nullable=False)
     simbolo: str = Field(min_length=1, max_length=10, index=True, unique=True, nullable=False)
     tipo: str = Field(min_length=1, max_length=20, index=True, nullable=False)
-
+    factor: Decimal = Field(
+        sa_column=Column(Numeric(12, 6), nullable=False, server_default="1")
+    )
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     deleted_at: Optional[datetime] = Field(default=None)
 

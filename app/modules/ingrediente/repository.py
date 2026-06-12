@@ -65,27 +65,27 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
 
 
     def obtener_productos_asociados(self, ingrediente_id: int) -> list[ProductoIngrediente]:
-        return self._session.exec(
+        return self.session.exec(
             select(ProductoIngrediente)
             .where(ProductoIngrediente.ingrediente_id == ingrediente_id)
         ).all()
 
 
     def get_ingredientes_de_producto(self, producto_id: int) -> list[ProductoIngrediente]:
-        return self._session.exec(
+        return self.session.exec(
             select(ProductoIngrediente)
             .where(ProductoIngrediente.producto_id == producto_id)
         ).all()
 
 
     def get_by_id_con_stock(self, ingrediente_id: int) -> Optional[Ingrediente]:
-        return self._session.get(Ingrediente, ingrediente_id)
+        return self.session.get(Ingrediente, ingrediente_id)
 
 
     def actualizar_stock_producto(self, producto_id: int, nuevo_stock: int) -> None:
-        producto = self._session.get(Producto, producto_id)
+        producto = self.session.get(Producto, producto_id)
         
         if producto:
             producto.stock_cantidad = nuevo_stock
             producto.updated_at = datetime.now(timezone.utc)
-            self._session.add(producto)
+            self.session.add(producto)
