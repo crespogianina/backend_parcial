@@ -35,18 +35,22 @@ class UsuarioService:
                 if not user or user.deleted_at is not None:
                     return None
 
-                return (user.id, user.role), "ok"
-        except Exception:
-            return None
+                roles = [ur.rol_codigo for ur in user.usuario_roles]
+
+                return (user.id, roles)
+        except Exception as e:
+            print("ERROR WS:", e)
+            raise
+        
     # ────────────────────────────────────────────────────────
 
     def get_by_username(self, username: str) -> UserPublic | None:
         with UsuarioUnitOfWork(self._session) as uow:
             usuario = uow.usuarios.get_by_username(username)
 
-            if usuario is None:
+            if not usuario:
                 return None
-            
+
             return UserPublic(**usuario.model_dump(), roles=[ur.rol_codigo for ur in usuario.usuario_roles])
 
 
