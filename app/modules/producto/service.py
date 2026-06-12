@@ -351,6 +351,7 @@ class ProductoService:
 
             if producto.imagenes_url:
                 UploadService().delete_images_by_urls(producto.imagenes_url)
+                producto.imagenes_url = None
 
             producto.deleted_at = datetime.utcnow()
             uow.productos.add(producto)
