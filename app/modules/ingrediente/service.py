@@ -94,7 +94,6 @@ class IngredienteService:
         return result
 
 
-
     def get_all(self, es_alergeno: bool, nombre: Optional[str] = None, descripcion: Optional[str] = None, offset: int = 0, limit: int = 20) -> IngredienteList:
         with IngredienteUnitOfWork(self._session) as uow:
             ingredientes = uow.ingredientes.get_all_ingredientes(nombre, descripcion, es_alergeno, offset=offset, limit=limit)
@@ -123,6 +122,9 @@ class IngredienteService:
 
             if data.nombre and data.nombre != ingrediente.nombre:
                 self._assert_nombre_unique(uow, data.nombre)
+
+            if data.unidad_medida_id and data.unidad_medida_id != ingrediente.unidad_medida_id:
+                self.validate_unidad_medida(data.unidad_medida_id, uow)
 
             patch = data.model_dump(exclude_unset=True)
             stock_anterior = ingrediente.stock_cantidad

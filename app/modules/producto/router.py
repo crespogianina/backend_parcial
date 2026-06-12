@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from sqlmodel import Session
 from app.core.database import get_session
 from app.core.deps import require_role
-from app.modules.producto.schemas import IngredienteAsignar, ProductoCreate, ProductoPublic, ProductoStockUpdate, ProductoUpdate, ProductoList
+from app.modules.producto.schemas import IngredienteAsignar, ProductoCreate, ProductoPublic, ProductoStockUpdate, ProductoUpdate, ProductoList, UnidadMedidaProductoRead
 from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from app.modules.producto.service import ProductoService
@@ -29,6 +29,11 @@ def get_all_productos(
     limit: Annotated[int, Query(ge=1, le=50)] = 50
 ) -> ProductoList:
     return svc.get_all_productos(nombre, descripcion, disponible, categoria_id, offset, limit)
+
+
+@router.get("/unidades-medida", response_model=list[UnidadMedidaProductoRead])
+def list_unidades(_admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: ProductoService = Depends(get_producto_service)):
+    return svc.list_all_unidades_medida()
 
 
 @router.get("/{id}", response_model=ProductoPublic, status_code=status.HTTP_200_OK, summary="Obtener producto por id")

@@ -45,9 +45,6 @@ class UsuarioService:
             if usuario is None:
                 return None
             
-            print(usuario.model_dump())
-            print(usuario.usuario_roles)
-
             return UserPublic(**usuario.model_dump(), roles=[ur.rol_codigo for ur in usuario.usuario_roles])
 
 

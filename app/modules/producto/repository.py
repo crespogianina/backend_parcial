@@ -150,6 +150,9 @@ class ProductoRepository(BaseRepository[Producto]):
         return self.session.get(UnidadMedida, unidad_medida_id)
 
 
+    def get_all_unidad_medida(self) -> list[UnidadMedida]:
+        return self.session.exec(select(UnidadMedida)).all()
+
     def get_removibles_ids(self, producto_id: int) -> set[int]:
         rows = self._session.exec(
             select(ProductoIngrediente.ingrediente_id)

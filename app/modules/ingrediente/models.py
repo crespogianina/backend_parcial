@@ -1,6 +1,8 @@
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
+from sqlalchemy import Column, Numeric
 from sqlmodel import Relationship, SQLModel, Field
 from app.modules.producto.models import ProductoIngrediente, UnidadMedida
 
@@ -16,6 +18,7 @@ class Ingrediente(SQLModel, table=True):
     descripcion: Optional[str] = Field(default=None)
     es_alergeno: bool = Field(default=False, nullable=False)
     stock_cantidad: int= Field(default=0, ge=0, nullable=False)
+    precio_base: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc),nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -8,6 +9,13 @@ from app.modules.categoria.schemas import CategoriaPublic
 from app.modules.ingrediente.schemas import IngredientePublic
 from .unit_of_work import ProductoUnitOfWork
 from app.modules.uploads.service import UploadService
+
+FACTORES = {
+    ("kg", "g"): 1000,
+    ("g", "kg"): 0.001,
+    ("l", "ml"): 1000,
+    ("ml", "l"): 0.001,
+}
 
 class ProductoService:
 
@@ -115,11 +123,25 @@ class ProductoService:
             )
 
 
+    def _convertir_unidad(cantidad, origen, destino):
+        if origen == destino:
+            return cantidad
+
+        factor = FACTORES.get((origen, destino))
+
+        if factor is None:
+            raise ValueError(
+                f"No existe conversión entre {origen} y {destino}"
+            )
+
+        return cantidad * factor
+
+
     def _calcular_stock(self, uow: ProductoUnitOfWork, ingredientes: list[IngredienteAsignar]) -> int:
         if not ingredientes:
             return 0
 
-        unidades_posibles = []
+        unidades_posibles: list[int] = []
 
         for ing in ingredientes:
             ingrediente = uow.ingredientes.get_by_id(ing.ingrediente_id)
@@ -127,11 +149,33 @@ class ProductoService:
             if not ingrediente or ing.cantidad <= 0:
                 continue
 
-            unidades = int(ingrediente.stock_cantidad / ing.cantidad)
+            if not ingrediente.unidad_medida:
+                raise ValueError(
+                    f"El ingrediente {ingrediente.nombre} no tiene unidad de medida asociada"
+                )
+
+            unidad_producto = uow.unidades.get_by_id(
+                ing.unidad_medida_id
+            )
+
+            if not unidad_producto:
+                raise ValueError(
+                    f"Unidad de medida {ing.unidad_medida_id} no encontrada"
+                )
+
+            stock_convertido = self._convertir_unidad(
+                Decimal(ingrediente.stock_cantidad),
+                ingrediente.unidad_medida.simbolo,
+                unidad_producto.simbolo
+            )
+
+            unidades = int(
+                stock_convertido / ing.cantidad
+            )
+
             unidades_posibles.append(unidades)
 
-        return min(unidades_posibles) if unidades_posibles else 0
-    
+        return min(unidades_posibles)
     
     def _to_producto_public(self, producto: Producto) -> ProductoPublic:
         unidad_medida = (
@@ -215,8 +259,8 @@ class ProductoService:
 
             producto.stock_cantidad = self._calcular_stock(uow,data.ingredientes)
 
-            uow.productos.add(producto)
             result = self._to_producto_public(producto)
+            uow.productos.add(producto)
 
         return result
 
@@ -420,3 +464,9 @@ class ProductoService:
             result = self._to_producto_public(producto)
 
         return result
+    
+
+    def list_all_unidades_medida(self) -> list[UnidadMedidaProductoRead]:
+        with ProductoUnitOfWork(self._session) as uow:
+            unidades = uow.productos.get_all_unidad_medida()
+            return [UnidadMedidaProductoRead.model_validate(u) for u in unidades]

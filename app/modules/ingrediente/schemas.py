@@ -7,6 +7,7 @@ class IngredienteBase(SQLModel):
     es_alergeno: bool = Field(default=False)
     stock_cantidad: int = Field(default=0, ge=0)
     unidad_medida_id: int= Field(gt=0)   
+    precio_base: float  = Field(ge=0)
 
 
 class IngredienteCreate(IngredienteBase):
@@ -23,7 +24,8 @@ class IngredienteUpdate(SQLModel):
     descripcion: Optional[str] = None
     es_alergeno: Optional[bool] = None
     stock_cantidad: Optional[int]  = Field(default=None, ge=0)
-    unidad_simbolo: str   
+    unidad_medida_id: int= Field(gt=0)   
+    precio_base: float  = Field(ge=0)
 
 
 class IngredienteList(SQLModel):
