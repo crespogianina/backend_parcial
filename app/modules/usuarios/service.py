@@ -121,10 +121,10 @@ class UsuarioService:
             )
 
 
-    def list_all(self, rol: Optional[str], offset: int, limit: int) -> list[UserPublic]:
+    def list_all(self, rol: Optional[str] = None, nombre: Optional[str] = None, email: Optional[str] = None, offset: int = 0, limit: int = 50) -> list[UserPublic]:
         with UsuarioUnitOfWork(self._session) as uow:
-            usuarios = uow.usuarios.get_all_usuarios(rol=rol, offset=offset, limit=limit)
-            result =[UserPublic(**u.model_dump(), roles=[ur.rol_codigo for ur in u.usuario_roles]) for u in usuarios] 
+            usuarios = uow.usuarios.get_all_usuarios(rol=rol, nombre=nombre, email=email, offset=offset, limit=limit)
+            result = [UserPublic(**u.model_dump(), roles=[ur.rol_codigo for ur in u.usuario_roles]) for u in usuarios] 
 
         return result
 

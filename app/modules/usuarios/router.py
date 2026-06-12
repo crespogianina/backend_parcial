@@ -88,11 +88,13 @@ def ruta_privada(current_user: Annotated[UserPublic, Depends(get_current_active_
 def list_users(
     _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     rol: Annotated[Optional[str], Query(description="Filtrar por rol: ADMIN, STOCK, PEDIDOS, CLIENT")] = None,
+    nombre: Annotated[Optional[str], Query(description="Filtrar por nombre o apellido")] = None,
+    email: Annotated[Optional[str], Query(description="Filtrar por email")] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     svc: UsuarioService = Depends(get_usuario_service)
 ) -> list[UserPublic]:
-    return svc.list_all(rol=rol, offset=offset, limit=limit)
+    return svc.list_all(rol=rol, nombre=nombre, email=email, offset=offset, limit=limit)
 
 
 @router.post("/admin/usuarios/{user_id}/desactivar", response_model=UserPublic)
