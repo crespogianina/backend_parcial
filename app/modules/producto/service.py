@@ -26,7 +26,7 @@ class ProductoService:
 
     def _get_or_404(self, uow: ProductoUnitOfWork, producto_id: int) -> Producto:
         producto = uow.productos.get_by_id(producto_id)
-
+        
         if not producto:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -123,7 +123,7 @@ class ProductoService:
             )
 
 
-    def _convertir_unidad(cantidad, origen, destino):
+    def _convertir_unidad(self, cantidad, origen, destino):
         if origen == destino:
             return cantidad
 
@@ -154,7 +154,7 @@ class ProductoService:
                     f"El ingrediente {ingrediente.nombre} no tiene unidad de medida asociada"
                 )
 
-            unidad_producto = uow.unidades.get_by_id(
+            unidad_producto = uow.productos.get_unidad_medida(
                 ing.unidad_medida_id
             )
 
@@ -195,12 +195,14 @@ class ProductoService:
         ]
 
         ingredientes = [
-            IngredienteProductoRead(
-                id=pi.ingrediente.id,
-                nombre=pi.ingrediente.nombre,
-                descripcion=pi.ingrediente.descripcion,
-                es_removible=pi.es_removible,
-            )
+                    IngredienteProductoRead(
+                        id=pi.ingrediente.id,
+                        nombre=pi.ingrediente.nombre,
+                        descripcion=pi.ingrediente.descripcion,
+                        es_removible=pi.es_removible,
+                        cantidad=pi.cantidad,
+                        unidad_medida_id=pi.unidad_medida_id,
+                    )
             for pi in producto.producto_ingredientes
         ]
 
@@ -238,7 +240,9 @@ class ProductoService:
 
         with ProductoUnitOfWork(self._session) as uow:
             self._assert_nombre_unique(uow, data.nombre)
-            self._validar_unidad_medida(uow, data.unidad_medida_id)
+
+            if data.unidad_medida_id:
+                self._validar_unidad_medida(uow, data.unidad_medida_id)
 
             self._validar_categorias_existen(uow, categoria_ids) 
 

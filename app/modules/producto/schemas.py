@@ -31,6 +31,8 @@ class IngredienteProductoRead(SQLModel):
     nombre: str
     descripcion: Optional[str] = None
     es_removible: bool
+    unidad_medida_id: int
+    cantidad: Optional[Decimal] 
 
 
 class ProductoBase(SQLModel):
@@ -41,12 +43,10 @@ class ProductoBase(SQLModel):
     disponible: bool = Field(default=True)
 
 
-
 class ProductoCreate(ProductoBase):
     categorias: List[CategoriaAsignar] = Field(min_length=1)  
     ingredientes: Optional[List[IngredienteAsignar]] = Field(default_factory=list)
-    unidad_medida_id: int= Field(gt=0) 
-
+    unidad_medida_id: Optional[int] = Field(default=None, gt=0)
 class ProductoPublic(ProductoBase):
     id: int
     activo: bool
