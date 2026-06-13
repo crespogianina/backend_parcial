@@ -58,4 +58,6 @@ class UsuarioRepository(BaseRepository[Usuario]):
         if email:
             statement = statement.where(Usuario.email.ilike(f"%{email}%"))
 
-        return list(self.session.exec(statement.offset(offset).limit(limit)).all())
+        statement = statement.order_by(Usuario.id).offset(offset).limit(limit)
+
+        return list(self.session.exec(statement).all())
