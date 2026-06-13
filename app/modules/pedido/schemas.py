@@ -95,6 +95,9 @@ class PedidoRead(SQLModel):
     costo_envio: Decimal
     total: Decimal
     created_at: datetime
+    cantidad_items: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    cliente_email: Optional[str] = None
 
 class PedidoDetail(PedidoRead):
     usuario_id: int

@@ -236,6 +236,13 @@ class PedidoService:
 
 
     def _to_pedido_read(self, pedido: Pedido) -> PedidoRead:
+        cantidad_items = sum(d.cantidad for d in pedido.detalles) if pedido.detalles else None
+        cliente_nombre = None
+        cliente_email = None
+        if pedido.usuario:
+            cliente_nombre = f"{pedido.usuario.nombre} {pedido.usuario.apellido}".strip()
+            cliente_email = pedido.usuario.email
+
         return PedidoRead(
             id=pedido.id,
             estado_codigo=pedido.estado_codigo,
@@ -244,6 +251,9 @@ class PedidoService:
             costo_envio=pedido.costo_envio,
             total=pedido.total,
             created_at=pedido.created_at,
+            cantidad_items=cantidad_items,
+            cliente_nombre=cliente_nombre,
+            cliente_email=cliente_email,
         )
 
 
