@@ -58,9 +58,9 @@ ESTADOS_PEDIDO = [
 ]
 
 FORMAS_PAGO = [
-    {"codigo": "MP",       "descripcion": "Mercado Pago", "habilitado": True},
+    {"codigo": "MERCADOPAGO", "descripcion": "Mercado Pago", "habilitado": True},  # 👈
     {"codigo": "EFECTIVO", "descripcion": "Efectivo",     "habilitado": True},
-    {"codigo": "TRANSFERENCIA", "descripcion": "Transferencia",     "habilitado": True},
+    {"codigo": "TRANSFERENCIA", "descripcion": "Transferencia", "habilitado": True},
 ]
 
 UNIDADES_MEDIDA = [

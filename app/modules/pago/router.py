@@ -18,7 +18,7 @@ from app.modules.usuarios.schemas import UserPublic
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/pagos", tags=["pagos"])
+router = APIRouter()
 
 # ── Dependencias ──────────────────────────────────────────────────────────────
 

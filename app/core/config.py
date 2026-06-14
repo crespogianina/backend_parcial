@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: Optional[str] = None
     CLOUDINARY_API_KEY: Optional[str] = None
     CLOUDINARY_API_SECRET: Optional[str] = None
+
+    VITE_FRONTEND_URL: str 
     
     model_config = {
         "env_file": ".env",

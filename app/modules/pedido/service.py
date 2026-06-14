@@ -566,3 +566,28 @@ class PedidoService:
                 usuario_id=usuario.id, motivo=motivo or "Cancelado por el cliente",
             )
         return result
+    
+    async def confirmar_por_pago(self, pedido_id: int) -> None:
+        with PedidoUnitOfWork(self._session) as uow:
+            pedido = self._get_or_404(uow, pedido_id)
+
+            if pedido.estado_codigo != ESTADO["PENDIENTE"]:
+                return
+
+            self._aplicar_transicion(
+                uow, pedido, ESTADO["CONFIRMADO"],
+                usuario_id=None,
+                motivo="Pago aprobado por MercadoPago",
+            )
+
+            dueno_id = pedido.usuario_id
+
+        await self._emit_ws(
+            pedido_id=pedido_id,
+            dueno_id=dueno_id,
+            estado_anterior=ESTADO["PENDIENTE"],
+            estado_nuevo=ESTADO["CONFIRMADO"],
+            usuario_id=None,
+            motivo="Pago aprobado por MercadoPago",
+            event=EVENTOS_WS["CONFIRMADO"],
+        )

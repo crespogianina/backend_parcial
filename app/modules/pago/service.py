@@ -16,17 +16,6 @@ from app.modules.usuarios.schemas import UserPublic
 
 logger = logging.getLogger(__name__)
 
-# ESTADO_MAP = {
-#     "approved":    "aprobado",
-#     "rejected":    "rechazado",
-#     "cancelled":   "rechazado",
-#     "refunded":    "rechazado",
-#     "charged_back":"rechazado",
-#     "pending":     "pendiente",
-#     "in_process":  "pendiente",
-#     "authorized":  "pendiente",
-# }
-
 ESTADOS_MP_TERMINALES = {"approved", "rejected", "cancelled", "refunded", "charged_back"}
 ESTADOS_MP_PENDIENTES = {"pending", "in_process", "authorized"}
 ESTADOS_MP_RECHAZADOS = {"rejected", "cancelled", "refunded", "charged_back"}
@@ -195,6 +184,7 @@ class PagoService:
                 detail="MercadoPago no configurado. Configure MP_ACCESS_TOKEN",
             )
         
+        total = pedido.total
 
         with PagoUnitOfWork(self._session) as uow:
             pendiente = uow.pagos.get_pendiente_by_pedido(pedido_id)
@@ -219,7 +209,7 @@ class PagoService:
 
         try:
             mp_data = self._crear_preferencia_mp(
-                monto=pedido.total,
+                monto=float(total),
                 titulo=f"Pedido #{pedido_id} - FoodStore",
                 external_reference=external_reference,
                 idempotency_key=idempotency_key,        
@@ -229,24 +219,23 @@ class PagoService:
         except RuntimeError as e:
             raise HTTPException( status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-        with PagoUnitOfWork(self._session) as uow:
-            pago = Pago(
-                pedido_id=pedido_id,
-                transaction_amount=pedido.total,
-                mp_status=ESTADO_INICIAL,
-                external_reference=external_reference,
-                idempotency_key=idempotency_key,
-                mp_preference_id=mp_data["preference_id"],
-                mp_init_point=mp_data.get("init_point"),
-            )
-            uow.pagos.add(pago)
-
-            return PagoCrearResponse(
-                pago_id=pago.id,                     
-                preference_id=mp_data["preference_id"],  
-                init_point=mp_data.get("init_point"),     
-                public_key=self._get_mp_public_key(),    
-            )
+        pago = Pago(
+            pedido_id=pedido_id,
+            transaction_amount=total,
+            mp_status=ESTADO_INICIAL,
+            external_reference=external_reference,
+            idempotency_key=idempotency_key,
+            mp_preference_id=mp_data["preference_id"],
+            mp_init_point=mp_data.get("init_point"),
+        )
+        uow.pagos.add(pago)
+        
+        return PagoCrearResponse(
+            pago_id=pago.id,                     
+            preference_id=mp_data["preference_id"],  
+            init_point=mp_data.get("init_point"),     
+            public_key=self._get_mp_public_key(),    
+        )
 
 
     async def procesar_webhook(self, data: dict, query_params: Optional[dict] = None) -> dict:
