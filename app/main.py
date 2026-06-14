@@ -10,6 +10,7 @@ from app.modules.direcciones.router import router as direccion_router
 from app.modules.pedido.router import router as pedido_router
 from app.modules.uploads.router import router as uploads_router
 from app.modules.pago.router import router as pago_router
+from app.modules.estadisticas.router import router as estadisticas_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,7 +29,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,6 +50,7 @@ api_v1.include_router(direccion_router, prefix="/direcciones", tags=["direccione
 api_v1.include_router(pedido_router, prefix="/pedidos", tags=["pedidos"])
 api_v1.include_router(uploads_router, prefix="/uploads", tags=["uploads"])
 api_v1.include_router(pago_router, prefix="/pagos", tags=["pagos"])
+api_v1.include_router(estadisticas_router, prefix="/estadisticas", tags=["estadisticas"])
 
 app.include_router(api_v1)
 
