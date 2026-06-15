@@ -6,7 +6,7 @@ from sqlmodel import Session
 from app.core.database import get_session
 from app.core.deps import get_current_active_user, require_role
 from app.core.rate_limit import check_auth_rate_limit, record_auth_failure
-from app.modules.usuarios.schemas import UserCreate, UserPublic
+from app.modules.usuarios.schemas import UserCreate, UserPublic, UserUpdate
 from app.modules.usuarios.service import UsuarioService
 
 router = APIRouter()
@@ -74,6 +74,15 @@ def logout(response: Response) -> dict:
 @router.get("/me", response_model=UserPublic)
 def read_me(current_user: Annotated[UserPublic, Depends(get_current_active_user)]) -> UserPublic:
     return current_user
+
+
+@router.patch("/me", response_model=UserPublic)
+def update_me(
+    body: UserUpdate,
+    current_user: Annotated[UserPublic, Depends(get_current_active_user)],
+    svc: UsuarioService = Depends(get_usuario_service),
+) -> UserPublic:
+    return svc.update_me(current_user.id, body)
 
 
 @router.get("/privado")

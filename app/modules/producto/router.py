@@ -32,7 +32,10 @@ def get_all_productos(
 
 
 @router.get("/unidades-medida", response_model=list[UnidadMedidaProductoRead])
-def list_unidades(_admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: ProductoService = Depends(get_producto_service)):
+def list_unidades(
+    _user: Annotated[UserPublic, Depends(require_role(["ADMIN", "STOCK"]))],
+    svc: ProductoService = Depends(get_producto_service),
+):
     return svc.list_all_unidades_medida()
 
 

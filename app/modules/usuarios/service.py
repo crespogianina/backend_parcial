@@ -6,7 +6,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.core.security import decode_token_con_motivo, hash_password, verify_password, create_access_token
 from app.modules.usuarios.model import Usuario, UsuarioRol
-from app.modules.usuarios.schemas import UserCreate, Token, UserPublic
+from app.modules.usuarios.schemas import UserCreate, Token, UserPublic, UserUpdate
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork
 
 
@@ -77,6 +77,7 @@ class UsuarioService:
                 nombre=user_in.nombre,
                 apellido=user_in.apellido,
                 email=user_in.email,
+                celular=user_in.celular,
                 password_hash=hash_password(user_in.password),
             )
 
@@ -154,3 +155,61 @@ class UsuarioService:
             updated = uow.usuarios.add(user)
 
             return UserPublic(**updated.model_dump(), roles=[ur.rol_codigo for ur in updated.usuario_roles])
+
+    def update_me(self, user_id: int, data: UserUpdate) -> UserPublic:
+        with UsuarioUnitOfWork(self._session) as uow:
+            user = uow.usuarios.get_by_id(user_id)
+
+            if not user or user.deleted_at is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuario no encontrado",
+                )
+
+            updates = data.model_dump(exclude_unset=True)
+
+            if not updates:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No hay datos para actualizar",
+                )
+
+            if "nombre" in updates:
+                nombre = updates["nombre"].strip()
+                if not nombre:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="El nombre no puede estar vacío",
+                    )
+                user.nombre = nombre
+
+            if "apellido" in updates:
+                apellido = updates["apellido"].strip()
+                if not apellido:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="El apellido no puede estar vacío",
+                    )
+                user.apellido = apellido
+
+            if "email" in updates:
+                email = str(updates["email"]).strip().lower()
+                otro = uow.usuarios.get_by_email(email)
+                if otro and otro.id != user.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="El email ya está registrado",
+                    )
+                user.email = email
+
+            if "celular" in updates:
+                celular = updates["celular"]
+                user.celular = celular.strip() if celular and celular.strip() else None
+
+            user.updated_at = datetime.now(timezone.utc)
+            updated = uow.usuarios.add(user)
+
+            return UserPublic(
+                **updated.model_dump(),
+                roles=[ur.rol_codigo for ur in updated.usuario_roles],
+            )

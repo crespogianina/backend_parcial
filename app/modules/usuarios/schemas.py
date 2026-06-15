@@ -26,6 +26,13 @@ class UserPublic(SQLModel):
     roles: list[str] = []
 
 
+class UserUpdate(SQLModel):
+    nombre: Optional[str] = Field(default=None, max_length=80)
+    apellido: Optional[str] = Field(default=None, max_length=80)
+    email: Optional[EmailStr] = None
+    celular: Optional[str] = Field(default=None, max_length=20)
+
+
 class Token(SQLModel):
     access_token: str
     token_type: str = "bearer"
