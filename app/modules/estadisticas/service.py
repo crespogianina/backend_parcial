@@ -69,8 +69,17 @@ class EstadisticasService:
             for fila in rows
         ]
 
-    def obtener_productos_top(self, limit: int) -> list[ProductoTopItem]:
-        rows = self._repo.get_productos_top(limit)
+    def obtener_productos_top(
+        self,
+        limit: int,
+        desde: date | None = None,
+        hasta: date | None = None,
+    ) -> list[ProductoTopItem]:
+        if desde is None or hasta is None:
+            desde, hasta = self._rango_default()
+        self._validar_rango(desde, hasta)
+
+        rows = self._repo.get_productos_top(limit, desde, hasta)
         return [
             ProductoTopItem(
                 producto_id=fila[0],

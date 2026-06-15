@@ -97,7 +97,7 @@ class EstadisticasRepository:
             )
             .select_from(Pedido)
             .where(
-                Pedido.estado_codigo != ESTADO_CANCELADO,
+                Pedido.estado_codigo.in_(ESTADOS_CON_INGRESO),
                 cast(Pedido.created_at, Date) >= desde,
                 cast(Pedido.created_at, Date) <= hasta,
             )
@@ -107,7 +107,12 @@ class EstadisticasRepository:
         rows = self.session.exec(statement).all()
         return [(row[0], Decimal(str(row[1])), int(row[2])) for row in rows]
 
-    def get_productos_top(self, limit: int) -> list[tuple[int, str, int, Decimal]]:
+    def get_productos_top(
+        self,
+        limit: int,
+        desde: Optional[date] = None,
+        hasta: Optional[date] = None,
+    ) -> list[tuple[int, str, int, Decimal]]:
         statement = (
             select(
                 DetallePedido.producto_id,
@@ -116,11 +121,12 @@ class EstadisticasRepository:
                 func.coalesce(func.sum(DetallePedido.subtotal_snap), 0),
             )
             .join(Pedido, DetallePedido.pedido_id == Pedido.id)
-            .where(Pedido.estado_codigo != ESTADO_CANCELADO)
+            .where(Pedido.estado_codigo.in_(ESTADOS_CON_INGRESO))
             .group_by(DetallePedido.producto_id, DetallePedido.nombre_snapshot)
             .order_by(func.sum(DetallePedido.subtotal_snap).desc())
             .limit(limit)
         )
+        statement = self._filtro_fecha_pedido(statement, desde, hasta)
         rows = self.session.exec(statement).all()
         return [
             (int(row[0]), row[1], int(row[2]), Decimal(str(row[3])))

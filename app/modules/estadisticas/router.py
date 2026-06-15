@@ -63,8 +63,10 @@ def obtener_productos_top(
     _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
     service: EstadisticasService = Depends(get_estadisticas_service),
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
+    desde: Annotated[Optional[date], Query()] = None,
+    hasta: Annotated[Optional[date], Query()] = None,
 ) -> list[ProductoTopItem]:
-    return service.obtener_productos_top(limit)
+    return service.obtener_productos_top(limit, desde, hasta)
 
 
 @router.get(
