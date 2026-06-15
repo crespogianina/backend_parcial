@@ -201,6 +201,7 @@ class ProductoService:
                         nombre=pi.ingrediente.nombre,
                         descripcion=pi.ingrediente.descripcion,
                         es_removible=pi.es_removible,
+                        es_alergeno=pi.ingrediente.es_alergeno,
                         cantidad=pi.cantidad,
                         unidad_medida_id=pi.unidad_medida_id,
                     )
