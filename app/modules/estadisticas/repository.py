@@ -6,11 +6,15 @@ from sqlalchemy import Date, cast, func
 from sqlmodel import Session, select
 
 from app.modules.estadisticas.schemas import AgrupacionVentas
-from app.modules.pago.models import Pago
 from app.modules.pedido.models import DetallePedido, EstadoPedido, Pedido
 
 ESTADO_CANCELADO = "CANCELADO"
-MP_APROBADO = "approved"
+ESTADOS_CON_INGRESO = {
+    "CONFIRMADO",
+    "EN_PREPARACION",
+    "EN_CAMINO",
+    "ENTREGADO",
+}
 
 
 class EstadisticasRepository:
@@ -141,18 +145,17 @@ class EstadisticasRepository:
         statement = (
             select(
                 Pedido.forma_pago_codigo,
-                func.coalesce(func.sum(Pago.transaction_amount), 0),
-                func.count(Pago.id),
+                func.coalesce(func.sum(Pedido.total), 0),
+                func.count(Pedido.id),
             )
-            .join(Pago, Pago.pedido_id == Pedido.id)
+            .select_from(Pedido)
             .where(
-                Pago.mp_status == MP_APROBADO,
-                Pedido.estado_codigo != ESTADO_CANCELADO,
+                Pedido.estado_codigo.in_(ESTADOS_CON_INGRESO),
                 cast(Pedido.created_at, Date) >= desde,
                 cast(Pedido.created_at, Date) <= hasta,
             )
             .group_by(Pedido.forma_pago_codigo)
-            .order_by(func.sum(Pago.transaction_amount).desc())
+            .order_by(func.sum(Pedido.total).desc())
         )
         rows = self.session.exec(statement).all()
         return [(row[0], Decimal(str(row[1])), int(row[2])) for row in rows]
