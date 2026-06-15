@@ -228,6 +228,39 @@ class ProductoService:
 
         return min(unidades_posibles) if unidades_posibles else 0
 
+    def _stock_maximo_por_ingredientes(
+        self, uow: ProductoUnitOfWork, producto_id: int
+    ) -> Optional[int]:
+        relaciones = uow.ingredientes.get_ingredientes_de_producto(producto_id)
+
+        if not relaciones:
+            return None
+
+        unidades_posibles: list[int] = []
+
+        for pi in relaciones:
+            ingrediente = uow.ingredientes.get_by_id(pi.ingrediente_id)
+
+            if not ingrediente or pi.cantidad <= 0:
+                continue
+
+            unidad_receta = uow.productos.get_unidad_medida(pi.unidad_medida_id)
+            unidad_ingrediente = uow.productos.get_unidad_medida(
+                ingrediente.unidad_medida_id
+            )
+
+            if not unidad_receta or not unidad_ingrediente:
+                continue
+
+            stock_convertido = self._convertir_unidad(
+                Decimal(ingrediente.stock_cantidad),
+                unidad_ingrediente.simbolo,
+                unidad_receta.simbolo,
+            )
+            unidades_posibles.append(int(stock_convertido / pi.cantidad))
+
+        return min(unidades_posibles) if unidades_posibles else 0
+
     # ── Casos de uso ─────────────────────────────────────────────────────────
 
     def create(self, data: ProductoCreate) -> ProductoPublic:
@@ -365,6 +398,17 @@ class ProductoService:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=f"El producto de id:{producto_id} ya tiene stock_cantidad={stock_cantidad}",
+                )
+
+            max_stock = self._stock_maximo_por_ingredientes(uow, producto_id)
+
+            if max_stock is not None and stock_cantidad > max_stock:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"El stock no puede superar {max_stock} unidades según "
+                        f"el stock actual de sus ingredientes."
+                    ),
                 )
 
             producto.stock_cantidad = stock_cantidad
