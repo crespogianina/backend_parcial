@@ -39,6 +39,14 @@ class PagoService:
 
     def _get_mp_public_key(self) -> Optional[str]:
         return settings.MP_PUBLIC_KEY
+
+    def _url_checkout_sandbox(self, url: Optional[str]) -> Optional[str]:
+        if not url or "sandbox.mercadopago" in url:
+            return url
+        return url.replace(
+            "https://www.mercadopago.com.ar/",
+            "https://sandbox.mercadopago.com.ar/",
+        )
     
 
     def _obtener_pedido_or_404(self, pedido_id: int) -> Pedido :
@@ -73,7 +81,7 @@ class PagoService:
                 "back_urls": back_urls,
                 "notification_url": (
                     settings.MP_WEBHOOK_URL
-                    or f"{settings.VITE_API_URL}/api/v1/pagos/webhook"
+                    or f"{settings.NGROK_URL or 'http://localhost:8000'}/api/v1/pagos/webhook"
                 ),
                 "auto_return": "approved",
             }
@@ -92,10 +100,13 @@ class PagoService:
                 )
 
             response = result.get("response", {})
+            init_point = self._url_checkout_sandbox(
+                response.get("sandbox_init_point") or response.get("init_point")
+            )
 
             return {
                 "preference_id": response.get("id"),
-                "init_point": response.get("init_point"),
+                "init_point": init_point,
             }
 
         except ImportError:
@@ -193,7 +204,7 @@ class PagoService:
             return PagoCrearResponse(
                 pago_id=pendiente.id,
                 preference_id=pendiente.mp_preference_id,
-                init_point=pendiente.mp_init_point,
+                init_point=self._url_checkout_sandbox(pendiente.mp_init_point),
                 public_key=self._get_mp_public_key(),
             )
  
