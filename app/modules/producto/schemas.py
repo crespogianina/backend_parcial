@@ -33,6 +33,7 @@ class IngredienteProductoRead(SQLModel):
     nombre: str
     descripcion: Optional[str] = None
     es_removible: bool
+    es_alergeno: bool = False
     unidad_medida_id: int
     cantidad: Optional[Decimal] 
 
