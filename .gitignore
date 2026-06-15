@@ -5,6 +5,9 @@ venv/
 # variables de entorno
 .env
 
+# seed demo local (solo tu máquina)
+app/db/seed_demo_local.py
+
 # archivos de python
 __pycache__/
 *.pyc
