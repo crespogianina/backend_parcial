@@ -121,11 +121,15 @@ def pedido_efectivo_pendiente_fixture(session: Session, client_user, producto_fi
 
 class TestCrearPago:
 
-    def test_crear_pago_sin_mp_configurado(self, client: TestClient, session: Session, client_user, pedido_mp_pendiente):
+    def test_crear_pago_sin_mp_configurado(
+        self, monkeypatch, client: TestClient, session: Session, client_user, pedido_mp_pendiente
+    ):
+        monkeypatch.setattr("app.modules.pago.service.settings.MP_ACCESS_TOKEN", "")
         set_auth_cookie(client, session, client_user)
         res = client.post(f"{BASE}/create-preference", json={"pedido_id": pedido_mp_pendiente.id})
         clear_auth_cookie(client)
         assert res.status_code in (400, 422, 500)
+        assert "MercadoPago" in res.json()["detail"]
 
     def test_crear_pago_pedido_ajeno(self, client: TestClient, session: Session, admin_user, pedido_mp_pendiente):
         set_auth_cookie(client, session, admin_user)

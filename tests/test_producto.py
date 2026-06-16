@@ -34,6 +34,7 @@ class TestCrearProducto:
             "descripcion": "Con carne y queso",
             "precio_base": 2500.0,
             "es_producto_final": False,
+            "stock_cantidad": 50,
             "categorias": [{"categoria_id": categoria_base.id, "es_principal": True}],
             "ingredientes": [{
                 "ingrediente_id": ingrediente_base.id,
