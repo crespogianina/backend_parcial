@@ -19,6 +19,7 @@ class UnidadMedidaProductoRead(SQLModel):
     nombre: str
     simbolo: str
     factor: int
+    tipo: str 
 
 
 class CategoriaProductoRead(SQLModel):
@@ -50,11 +51,14 @@ class ProductoCreate(ProductoBase):
     categorias: List[CategoriaAsignar] = Field(min_length=1)  
     ingredientes: Optional[List[IngredienteAsignar]] = Field(default_factory=list)
     unidad_medida_id: Optional[int] = Field(default=None, gt=0)
+    es_producto_final: bool = False
+    stock_cantidad: Optional[int] = Field(default=None, ge=0)
 
 
 class ProductoPublic(ProductoBase):
     id: int
     activo: bool
+    es_producto_final: bool = False
     unidad_medida: Optional[UnidadMedidaProductoRead] = None
     categorias: List[CategoriaProductoRead] = Field(default_factory=list)
     ingredientes: List[IngredienteProductoRead] = Field(default_factory=list)
@@ -75,6 +79,7 @@ class ProductoUpdate(SQLModel):
     categorias: Optional[List[CategoriaAsignar]] = None  
     ingredientes: Optional[List[IngredienteAsignar]] = None
     unidad_medida_id: Optional[int]= Field(gt=0, default=None) 
+    es_producto_final: Optional[bool] = None 
 
 
 class ProductoList(SQLModel):
