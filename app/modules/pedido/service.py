@@ -24,6 +24,14 @@ ESTADO = {
     "CANCELADO": "CANCELADO",
 }
 
+_FACTORES = {
+    ("kg", "g"): Decimal("1000"),
+    ("g", "kg"): Decimal("0.001"),
+    ("l", "ml"): Decimal("1000"),
+    ("ml", "l"): Decimal("0.001"),
+}
+
+
 TRANSICIONES_VALIDAS: dict[str, set[str]] = {
     ESTADO["PENDIENTE"]: {ESTADO["CONFIRMADO"], ESTADO["CANCELADO"]},
     ESTADO["CONFIRMADO"]: {ESTADO["EN_PREPARACION"], ESTADO["CANCELADO"]},
@@ -117,6 +125,18 @@ class PedidoService:
             )
 
 
+    def _convertir_unidad_ing(self, cantidad: Decimal, origen: str, destino: str) -> Decimal:
+        if origen == destino:
+            return cantidad
+        factor = _FACTORES.get((origen, destino))
+        if factor is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"No existe conversión entre '{origen}' y '{destino}'",
+            )
+        return cantidad * factor
+
+
     def _validar_y_construir_detalles(self, items: list, uow: PedidoUnitOfWork) -> list[dict]:
         ids = [i.producto_id for i in items]
 
@@ -155,7 +175,34 @@ class PedidoService:
                     )
 
             producto.stock_cantidad -= item.cantidad
+            logger.info("Stock actualizado: producto=%s nuevo_stock=%s", producto.id, producto.stock_cantidad)
             uow.productos.add(producto)
+
+            if not producto.es_producto_final:
+                for pi in producto.producto_ingredientes:
+                    ingrediente = uow.ingredientes.get_with_lock(pi.ingrediente_id)
+                    if not ingrediente:
+                        continue
+
+                    unidad_ingrediente = uow.productos.get_unidad_medida(ingrediente.unidad_medida_id)
+                    unidad_receta = uow.productos.get_unidad_medida(pi.unidad_medida_id)
+
+                    if not unidad_ingrediente or not unidad_receta:
+                        continue
+
+                    cantidad_receta = Decimal(str(pi.cantidad)) * item.cantidad
+                    cantidad_convertida = self._convertir_unidad_ing(
+                        cantidad_receta,
+                        unidad_receta.simbolo,
+                        unidad_ingrediente.simbolo,
+                    )
+
+                    ingrediente.stock_cantidad -= cantidad_convertida
+                    logger.info(
+                        "Stock ingrediente actualizado: ingrediente=%s nuevo_stock=%s",
+                        ingrediente.id, ingrediente.stock_cantidad,
+                    )
+                    uow.ingredientes.add(ingrediente)
 
             detalles_data.append({
                 "producto_id":     producto.id,
@@ -307,7 +354,7 @@ class PedidoService:
         motivo: Optional[str],
     ) -> None:
         estado_actual = pedido.estado_codigo
- 
+
         if destino == ESTADO["CANCELADO"]:
             for detalle in pedido.detalles:
                 producto = uow.productos.get_with_lock(detalle.producto_id)
@@ -315,10 +362,36 @@ class PedidoService:
                     producto.stock_cantidad += detalle.cantidad
                     uow.productos.add(producto)
 
+                    if not producto.es_producto_final:
+                        for pi in producto.producto_ingredientes:
+                            ingrediente = uow.ingredientes.get_with_lock(pi.ingrediente_id)
+                            if not ingrediente:
+                                continue
+
+                            unidad_ingrediente = uow.productos.get_unidad_medida(ingrediente.unidad_medida_id)
+                            unidad_receta = uow.productos.get_unidad_medida(pi.unidad_medida_id)
+
+                            if not unidad_ingrediente or not unidad_receta:
+                                continue
+
+                            cantidad_receta = Decimal(str(pi.cantidad)) * detalle.cantidad
+                            cantidad_convertida = self._convertir_unidad_ing(
+                                cantidad_receta,
+                                unidad_receta.simbolo,
+                                unidad_ingrediente.simbolo,
+                            )
+
+                            ingrediente.stock_cantidad += cantidad_convertida
+                            logger.info(
+                                "Stock ingrediente devuelto: ingrediente=%s nuevo_stock=%s",
+                                ingrediente.id, ingrediente.stock_cantidad,
+                            )
+                            uow.ingredientes.add(ingrediente)
+
         pedido.estado_codigo = destino
         pedido.updated_at = datetime.now(timezone.utc)
         uow.pedidos.add(pedido)
- 
+
         uow.historial.add(HistorialEstadoPedido(
             pedido_id=pedido.id,
             estado_desde=estado_actual,
@@ -326,7 +399,7 @@ class PedidoService:
             usuario_id=usuario_id,
             motivo=motivo,
         ))
- 
+
         logger.info(
             "FSM: usuario=%s pedido=%s '%s' → '%s'",
             usuario_id, pedido.id, estado_actual, destino,
@@ -566,10 +639,13 @@ class PedidoService:
                 usuario_id=usuario.id, motivo=motivo or "Cancelado por el cliente",
             )
         return result
-    
+        
     async def confirmar_por_pago(self, pedido_id: int) -> None:
         with PedidoUnitOfWork(self._session) as uow:
-            pedido = self._get_or_404(uow, pedido_id)
+            pedido = uow.pedidos.get_with_lock(pedido_id)
+
+            if not pedido:
+                return
 
             if pedido.estado_codigo != ESTADO["PENDIENTE"]:
                 return

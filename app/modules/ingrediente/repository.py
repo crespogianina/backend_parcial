@@ -89,3 +89,11 @@ class IngredienteRepository(BaseRepository[Ingrediente]):
             producto.stock_cantidad = nuevo_stock
             producto.updated_at = datetime.now(timezone.utc)
             self.session.add(producto)
+
+
+    def get_with_lock(self, ingrediente_id: int) -> Optional[Ingrediente]:
+        return self.session.exec(
+            select(Ingrediente)
+            .where(Ingrediente.id == ingrediente_id)
+            .with_for_update()
+        ).first()

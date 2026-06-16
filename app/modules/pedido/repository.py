@@ -102,3 +102,10 @@ class PedidoRepository(BaseRepository[Pedido]):
         )
 
         return self.session.exec(statement).one()
+    
+    def get_with_lock(self, pedido_id: int) -> Optional[Pedido]:
+        return self.session.exec(
+            select(Pedido)
+            .where(Pedido.id == pedido_id)
+            .with_for_update()
+        ).first()
