@@ -307,8 +307,10 @@ class ProductoService:
             if ingrediente_ids:
                 self._validar_ingredientes_existen(uow, ingrediente_ids)
 
-            producto = Producto.model_validate(data.model_dump(exclude={"categorias", "ingredientes"}))
-            producto.stock_cantidad = 0
+            producto = Producto.model_validate(
+                data.model_dump(exclude={"categorias", "ingredientes", "stock_cantidad"})  # ← fix
+            )
+            producto.stock_cantidad = 0 
             uow.productos.add(producto)
             self._session.flush()
 
