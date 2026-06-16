@@ -174,8 +174,29 @@ class PedidoService:
                         f"Ingredientes no removibles o ajenos a '{producto.nombre}': {sorted(invalidos)}",
                     )
 
-            producto.stock_cantidad -= item.cantidad
-            logger.info("Stock actualizado: producto=%s nuevo_stock=%s", producto.id, producto.stock_cantidad)
+            detalles_data.append({
+                "producto_id":     producto.id,
+                "nombre_snapshot": producto.nombre,
+                "cantidad":        item.cantidad,
+                "precio_snapshot": producto.precio_base,
+                "subtotal_snap":   producto.precio_base * item.cantidad,
+                "personalizacion": item.personalizacion,
+            })
+
+        return detalles_data
+
+
+    def _descontar_stock_pedido(self, uow: PedidoUnitOfWork, pedido: Pedido) -> None:
+        for detalle in pedido.detalles:
+            producto = uow.productos.get_with_lock(detalle.producto_id)
+            if not producto:
+                continue
+
+            producto.stock_cantidad -= detalle.cantidad
+            logger.info(
+                "Stock producto descontado: producto=%s nuevo_stock=%s",
+                producto.id, producto.stock_cantidad,
+            )
             uow.productos.add(producto)
 
             if not producto.es_producto_final:
@@ -190,7 +211,7 @@ class PedidoService:
                     if not unidad_ingrediente or not unidad_receta:
                         continue
 
-                    cantidad_receta = Decimal(str(pi.cantidad)) * item.cantidad
+                    cantidad_receta = Decimal(str(pi.cantidad)) * detalle.cantidad
                     cantidad_convertida = self._convertir_unidad_ing(
                         cantidad_receta,
                         unidad_receta.simbolo,
@@ -199,22 +220,10 @@ class PedidoService:
 
                     ingrediente.stock_cantidad -= cantidad_convertida
                     logger.info(
-                        "Stock ingrediente actualizado: ingrediente=%s nuevo_stock=%s",
+                        "Stock ingrediente descontado: ingrediente=%s nuevo_stock=%s",
                         ingrediente.id, ingrediente.stock_cantidad,
                     )
                     uow.ingredientes.add(ingrediente)
-
-            detalles_data.append({
-                "producto_id":     producto.id,
-                "nombre_snapshot": producto.nombre,
-                "cantidad":        item.cantidad,
-                "precio_snapshot": producto.precio_base,
-                "subtotal_snap":   producto.precio_base * item.cantidad,
-                "personalizacion": item.personalizacion,
-            })
-
-        return detalles_data
-
 
     def _validar_direccion(self, direccion_id: int, usuario_id: int, uow: PedidoUnitOfWork) -> None:
         direccion: DireccionPublic = uow.direcciones.get_by_id(direccion_id)
@@ -305,10 +314,7 @@ class PedidoService:
 
 
     def _calcular_costo_envio(self, subtotal: Decimal) -> Decimal:
-        UMBRAL_ENVIO_GRATIS = Decimal("10000")
-        COSTO_ENVIO_FIJO    = Decimal("500")
-        
-        return Decimal("0") if subtotal >= UMBRAL_ENVIO_GRATIS else COSTO_ENVIO_FIJO
+        return Decimal("500")
 
 
     async def _emit_ws(
@@ -355,38 +361,43 @@ class PedidoService:
     ) -> None:
         estado_actual = pedido.estado_codigo
 
-        if destino == ESTADO["CANCELADO"]:
+        if destino == ESTADO["CONFIRMADO"] and estado_actual == ESTADO["PENDIENTE"]:
+            self._descontar_stock_pedido(uow, pedido)
+
+        if destino == ESTADO["CANCELADO"] and estado_actual != ESTADO["PENDIENTE"]:
             for detalle in pedido.detalles:
                 producto = uow.productos.get_with_lock(detalle.producto_id)
-                if producto:
-                    producto.stock_cantidad += detalle.cantidad
-                    uow.productos.add(producto)
+                if not producto:
+                    continue
 
-                    if not producto.es_producto_final:
-                        for pi in producto.producto_ingredientes:
-                            ingrediente = uow.ingredientes.get_with_lock(pi.ingrediente_id)
-                            if not ingrediente:
-                                continue
+                producto.stock_cantidad += detalle.cantidad
+                uow.productos.add(producto)
 
-                            unidad_ingrediente = uow.productos.get_unidad_medida(ingrediente.unidad_medida_id)
-                            unidad_receta = uow.productos.get_unidad_medida(pi.unidad_medida_id)
+                if not producto.es_producto_final:
+                    for pi in producto.producto_ingredientes:
+                        ingrediente = uow.ingredientes.get_with_lock(pi.ingrediente_id)
+                        if not ingrediente:
+                            continue
 
-                            if not unidad_ingrediente or not unidad_receta:
-                                continue
+                        unidad_ingrediente = uow.productos.get_unidad_medida(ingrediente.unidad_medida_id)
+                        unidad_receta = uow.productos.get_unidad_medida(pi.unidad_medida_id)
 
-                            cantidad_receta = Decimal(str(pi.cantidad)) * detalle.cantidad
-                            cantidad_convertida = self._convertir_unidad_ing(
-                                cantidad_receta,
-                                unidad_receta.simbolo,
-                                unidad_ingrediente.simbolo,
-                            )
+                        if not unidad_ingrediente or not unidad_receta:
+                            continue
 
-                            ingrediente.stock_cantidad += cantidad_convertida
-                            logger.info(
-                                "Stock ingrediente devuelto: ingrediente=%s nuevo_stock=%s",
-                                ingrediente.id, ingrediente.stock_cantidad,
-                            )
-                            uow.ingredientes.add(ingrediente)
+                        cantidad_receta = Decimal(str(pi.cantidad)) * detalle.cantidad
+                        cantidad_convertida = self._convertir_unidad_ing(
+                            cantidad_receta,
+                            unidad_receta.simbolo,
+                            unidad_ingrediente.simbolo,
+                        )
+
+                        ingrediente.stock_cantidad += cantidad_convertida
+                        logger.info(
+                            "Stock ingrediente devuelto: ingrediente=%s nuevo_stock=%s",
+                            ingrediente.id, ingrediente.stock_cantidad,
+                        )
+                        uow.ingredientes.add(ingrediente)
 
         pedido.estado_codigo = destino
         pedido.updated_at = datetime.now(timezone.utc)
