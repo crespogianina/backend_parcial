@@ -169,7 +169,7 @@ class PagoService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"El pedido tiene forma de pago '{pedido.forma_pago_codigo}', "
-                       f"no corresponde checkout de MercadoPago.",
+                    f"no corresponde checkout de MercadoPago.",
             )
         
         if pedido.estado_codigo != "PENDIENTE":
@@ -188,15 +188,15 @@ class PagoService:
 
         with PagoUnitOfWork(self._session) as uow:
             pendiente = uow.pagos.get_pendiente_by_pedido(pedido_id)
- 
-        if pendiente and pendiente.mp_preference_id:
-            return PagoCrearResponse(
-                pago_id=pendiente.id,
-                preference_id=pendiente.mp_preference_id,
-                init_point=pendiente.mp_init_point,
-                public_key=self._get_mp_public_key(),
-            )
- 
+
+            if pendiente and pendiente.mp_preference_id:
+                return PagoCrearResponse(
+                    pago_id=pendiente.id,
+                    preference_id=pendiente.mp_preference_id,
+                    init_point=pendiente.mp_init_point,
+                    public_key=self._get_mp_public_key(),
+                )
+
         ngrok_url = settings.NGROK_URL or "http://localhost:8000"
         back_urls = {
             "success": f"{ngrok_url}/api/v1/pagos/redirect/{pedido_id}/success",
@@ -217,7 +217,7 @@ class PagoService:
             )
 
         except RuntimeError as e:
-            raise HTTPException( status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
         pago = Pago(
             pedido_id=pedido_id,
@@ -235,13 +235,13 @@ class PagoService:
             pago_id = pago.id
             preference_id = pago.mp_preference_id
             init_point = pago.mp_init_point
- 
+
         return PagoCrearResponse(
             pago_id=pago_id,
             preference_id=preference_id,
             init_point=init_point,
             public_key=self._get_mp_public_key(),
-        )   
+        )
 
     async def procesar_webhook(self, data: dict, query_params: Optional[dict] = None) -> dict:
         logger.info("Webhook recibido: data=%s qs=%s", data, query_params or {})
@@ -266,9 +266,13 @@ class PagoService:
 
         if topic not in (None, "payment"):
             return {"status": "ignored", "reason": f"Topic: {topic}"}
- 
+
         try:
             mp_info = self._consultar_pago_mp(int(pago_mp_id))
+        except RuntimeError:
+            return {"status": "ignored", "reason": f"Payment {pago_mp_id} not found in MP"}
+
+        try:
             estado_mp = mp_info.get("mp_status")
 
             if estado_mp not in ESTADOS_MP_TERMINALES | ESTADOS_MP_PENDIENTES:
@@ -289,13 +293,13 @@ class PagoService:
                     return {"status": "already_processed", "estado": pago.mp_status}
 
                 self._aplicar_estado_mp(pago, mp_info)
-                uow.pagos.update(pago)
+                uow.pagos.add(pago)  # ← fix: era update
                 pedido_id = pago.pedido_id
                 pago_id = pago.id
 
             if estado_mp == "approved":
                 await self._pedido_service.confirmar_por_pago(pedido_id)
- 
+
             return {
                 "status": "processed",
                 "pago_id": pago_id,
@@ -311,8 +315,7 @@ class PagoService:
             return {"status": "error", "reason": str(e)}
 
 
-
-    async def confirmar_pago( self, pedido_id: int, payment_id: Optional[int] = None, usuario: Optional[UserPublic] = None ) -> PagoEstadoResponse:
+    async def confirmar_pago(self, pedido_id: int, payment_id: Optional[int] = None, usuario: Optional[UserPublic] = None) -> PagoEstadoResponse:
         pedido = self._obtener_pedido_or_404(pedido_id)
 
         if usuario is not None:
@@ -323,46 +326,45 @@ class PagoService:
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No tenés permiso para consultar este pago.",
                 )
- 
+
         resolved_payment_id = payment_id
- 
+
         if not resolved_payment_id:
             with PagoUnitOfWork(self._session) as uow:
                 pago_local = uow.pagos.get_ultimo_by_pedido(pedido_id)
 
                 if pago_local and pago_local.mp_payment_id:
                     resolved_payment_id = pago_local.mp_payment_id
- 
+
         if not resolved_payment_id:
             with PagoUnitOfWork(self._session) as uow:
                 pago_local = uow.pagos.get_ultimo_by_pedido(pedido_id)
 
                 return PagoEstadoResponse(
-                    estado=pago_local.mp_status if pago_local else None, 
+                    estado=pago_local.mp_status if pago_local else None,
                     pedido_id=pedido_id,
                 )
- 
+
         try:
             mp_info = self._consultar_pago_mp(resolved_payment_id)
-
         except RuntimeError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
- 
+
         estado_mp = mp_info.get("mp_status")
- 
+
         with PagoUnitOfWork(self._session) as uow:
             pago = uow.pagos.get_by_mp_payment_id(resolved_payment_id)
- 
+
             if not pago:
                 pago = uow.pagos.get_ultimo_by_pedido(pedido_id)
- 
+
             if pago and pago.mp_status not in ESTADOS_MP_TERMINALES:
                 self._aplicar_estado_mp(pago, mp_info)
-                uow.pagos.update(pago)
+                uow.pagos.add(pago)  # ← fix: era update
 
             elif pago:
-                estado_mp = pago.mp_status   
- 
+                estado_mp = pago.mp_status
+
         if estado_mp == "approved":
             await self._pedido_service.confirmar_por_pago(pedido_id)
 
@@ -370,6 +372,6 @@ class PagoService:
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
                 detail=f"Pago no acreditado ({estado_mp}). Podés reintentar el pago.",
-            )  
- 
+            )
+
         return PagoEstadoResponse(estado=estado_mp, pedido_id=pedido_id)
