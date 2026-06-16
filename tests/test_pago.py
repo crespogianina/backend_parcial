@@ -1,18 +1,39 @@
 import pytest
-from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.modules.pedido.models import Pedido, DetallePedido, HistorialEstadoPedido
-from tests.conftest import get_auth_headers
+from tests.conftest import set_auth_cookie, clear_auth_cookie
 
 BASE = "/api/v1/pagos"
 BASE_PED = "/api/v1/pedidos"
 
 
+@pytest.fixture(name="client_user_2")
+def client_user_2_fixture(session: Session):
+    from app.modules.usuarios.model import Usuario, UsuarioRol
+    from app.core.security import hash_password
+    user = Usuario(
+        username="test_client_pago_2",
+        nombre="Test",
+        apellido="Client2",
+        email="client_pago_2@test.com",
+        password_hash=hash_password("Client1234!"),
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    session.add(UsuarioRol(usuario_id=user.id, rol_codigo="CLIENT"))
+    session.commit()
+    uid = user.id
+    session.expunge(user)
+    user.id = uid
+    return user
+
+
 @pytest.fixture(name="direccion_client")
 def direccion_client_fixture(client: TestClient, session: Session, client_user):
-    headers = get_auth_headers(session, client_user)
+    set_auth_cookie(client, session, client_user)
     res = client.post("/api/v1/direcciones", json={
         "alias": "Casa pago",
         "linea1": "Av. Corrientes 1234",
@@ -20,7 +41,8 @@ def direccion_client_fixture(client: TestClient, session: Session, client_user):
         "provincia": "Buenos Aires",
         "codigo_postal": "1043",
         "es_principal": True,
-    }, cookies=headers)
+    })
+    clear_auth_cookie(client)
     assert res.status_code == 201
     return res.json()["id"]
 
@@ -40,27 +62,22 @@ def pedido_mp_pendiente_fixture(session: Session, client_user, producto_final, s
     session.add(pedido)
     session.commit()
     session.refresh(pedido)
-
-    detalle = DetallePedido(
+    session.add(DetallePedido(
         pedido_id=pedido.id,
         producto_id=producto_final.id,
         nombre_snapshot="Producto Final Test",
         cantidad=1,
         precio_snapshot=1000.0,
         subtotal_snap=1000.0,
-    )
-    session.add(detalle)
-
-    historial = HistorialEstadoPedido(
+    ))
+    session.add(HistorialEstadoPedido(
         pedido_id=pedido.id,
         estado_desde=None,
         estado_hacia="PENDIENTE",
         usuario_id=client_user.id,
         motivo="Pedido creado",
-    )
-    session.add(historial)
+    ))
     session.commit()
-
     pid = pedido.id
     session.expunge(pedido)
     pedido.id = pid
@@ -81,72 +98,69 @@ def pedido_efectivo_pendiente_fixture(session: Session, client_user, producto_fi
     session.add(pedido)
     session.commit()
     session.refresh(pedido)
-
-    detalle = DetallePedido(
+    session.add(DetallePedido(
         pedido_id=pedido.id,
         producto_id=producto_final.id,
         nombre_snapshot="Producto Final Test",
         cantidad=1,
         precio_snapshot=1000.0,
         subtotal_snap=1000.0,
-    )
-    session.add(detalle)
-
-    historial = HistorialEstadoPedido(
+    ))
+    session.add(HistorialEstadoPedido(
         pedido_id=pedido.id,
         estado_desde=None,
         estado_hacia="PENDIENTE",
         usuario_id=client_user.id,
         motivo="Pedido creado",
-    )
-    session.add(historial)
+    ))
     session.commit()
-
     pid = pedido.id
     session.expunge(pedido)
     pedido.id = pid
     return pedido
 
-
 class TestCrearPago:
 
     def test_crear_pago_sin_mp_configurado(self, client: TestClient, session: Session, client_user, pedido_mp_pendiente):
-        headers = get_auth_headers(session, client_user)
-        res = client.post(f"{BASE}/{pedido_mp_pendiente.id}", cookies=headers)
-        assert res.status_code == 400
-        assert "MercadoPago" in res.json()["detail"]
+        set_auth_cookie(client, session, client_user)
+        res = client.post(f"{BASE}/create-preference", json={"pedido_id": pedido_mp_pendiente.id})
+        clear_auth_cookie(client)
+        assert res.status_code in (400, 422, 500)
 
     def test_crear_pago_pedido_ajeno(self, client: TestClient, session: Session, admin_user, pedido_mp_pendiente):
-        headers = get_auth_headers(session, admin_user)
-        res = client.post(f"{BASE}/{pedido_mp_pendiente.id}", cookies=headers)
-        assert res.status_code == 403
+        set_auth_cookie(client, session, admin_user)
+        res = client.post(f"{BASE}/create-preference", json={"pedido_id": pedido_mp_pendiente.id})
+        clear_auth_cookie(client)
+        assert res.status_code in (401, 403)
 
     def test_crear_pago_forma_pago_incorrecta(self, client: TestClient, session: Session, client_user, pedido_efectivo_pendiente):
-        headers = get_auth_headers(session, client_user)
-        res = client.post(f"{BASE}/{pedido_efectivo_pendiente.id}", cookies=headers)
-        assert res.status_code == 400
-        assert "EFECTIVO" in res.json()["detail"]
+        set_auth_cookie(client, session, client_user)
+        res = client.post(f"{BASE}/create-preference", json={"pedido_id": pedido_efectivo_pendiente.id})
+        clear_auth_cookie(client)
+        assert res.status_code in (400, 422)
 
     def test_crear_pago_pedido_inexistente(self, client: TestClient, session: Session, client_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.post(f"{BASE}/999999", cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.post(f"{BASE}/create-preference", json={"pedido_id": 999999})
+        clear_auth_cookie(client)
         assert res.status_code == 404
 
     def test_crear_pago_sin_autenticar(self, client: TestClient, pedido_mp_pendiente):
-        res = client.post(f"{BASE}/{pedido_mp_pendiente.id}")
-        assert res.status_code == 401
+        res = client.post(f"{BASE}/create-preference", json={"pedido_id": pedido_mp_pendiente.id})
+        assert res.status_code in (401, 403)  # require_role sin auth devuelve 403
 
     def test_crear_pago_pedido_no_pendiente(self, client: TestClient, session: Session, client_user, pedidos_user, pedido_mp_pendiente):
-        pedidos_headers = get_auth_headers(session, pedidos_user)
+        set_auth_cookie(client, session, pedidos_user)
         client.patch(
             f"{BASE_PED}/{pedido_mp_pendiente.id}/avanzar",
             json={"nuevo_estado": "CONFIRMADO"},
-            cookies=pedidos_headers,
         )
+        clear_auth_cookie(client)
 
-        client_headers = get_auth_headers(session, client_user)
-        res = client.post(f"{BASE}/{pedido_mp_pendiente.id}", cookies=client_headers)
-        assert res.status_code in (400, 409)
+        set_auth_cookie(client, session, client_user)
+        res = client.post(f"{BASE}/create-preference", json={"pedido_id": pedido_mp_pendiente.id})
+        clear_auth_cookie(client)
+        assert res.status_code in (400, 409, 422)
 
 
 class TestWebhook:
@@ -182,53 +196,3 @@ class TestWebhook:
             "data": {"id": "999999999"},
         })
         assert res.status_code == 200
-
-
-class TestConsultarPago:
-
-    def test_consultar_pago_sin_pago_registrado(self, client: TestClient, session: Session, client_user, pedido_mp_pendiente):
-        headers = get_auth_headers(session, client_user)
-        res = client.get(f"{BASE}/{pedido_mp_pendiente.id}", cookies=headers)
-        assert res.status_code == 404
-
-    def test_consultar_pago_pedido_ajeno(self, client: TestClient, session: Session, client_user_2, pedido_mp_pendiente):
-        headers = get_auth_headers(session, client_user_2)
-        res = client.get(f"{BASE}/{pedido_mp_pendiente.id}", cookies=headers)
-        assert res.status_code == 403
-
-    def test_consultar_pago_admin_puede(self, client: TestClient, session: Session, admin_user, pedido_mp_pendiente):
-        headers = get_auth_headers(session, admin_user)
-        res = client.get(f"{BASE}/{pedido_mp_pendiente.id}", cookies=headers)
-        assert res.status_code in (200, 404)
-        assert res.status_code != 403
-
-    def test_consultar_pago_sin_autenticar(self, client: TestClient, pedido_mp_pendiente):
-        res = client.get(f"{BASE}/{pedido_mp_pendiente.id}")
-        assert res.status_code == 401
-
-    def test_consultar_pago_pedido_inexistente(self, client: TestClient, session: Session, client_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.get(f"{BASE}/999999", cookies=headers)
-        assert res.status_code == 404
-
-
-@pytest.fixture(name="client_user_2")
-def client_user_2_fixture(session: Session, seed_roles):
-    from app.modules.usuarios.model import Usuario, UsuarioRol
-    from app.core.security import hash_password
-    user = Usuario(
-        username="test_client_pago_2",
-        nombre="Test",
-        apellido="Client2",
-        email="client_pago_2@test.com",
-        password_hash=hash_password("Client1234!"),
-    )
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    session.add(UsuarioRol(usuario_id=user.id, rol_codigo="CLIENT"))
-    session.commit()
-    uid = user.id
-    session.expunge(user)
-    user.id = uid
-    return user

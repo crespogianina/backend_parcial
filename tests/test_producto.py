@@ -2,14 +2,15 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from tests.conftest import get_auth_headers
+from tests.conftest import set_auth_cookie, clear_auth_cookie
 
 BASE = "/api/v1/productos"
 
 
 class TestCrearProducto:
+
     def test_crear_producto_final(self, client: TestClient, session: Session, admin_user, categoria_base, unidad_ud):
-        headers = get_auth_headers(session, admin_user)
+        set_auth_cookie(client, session, admin_user)
         res = client.post(BASE, json={
             "nombre": "Coca Cola 500ml",
             "descripcion": "Bebida gaseosa",
@@ -19,14 +20,15 @@ class TestCrearProducto:
             "unidad_medida_id": unidad_ud.id,
             "categorias": [{"categoria_id": categoria_base.id, "es_principal": True}],
             "ingredientes": [],
-        }, cookies=headers)
+        })
+        clear_auth_cookie(client)
         assert res.status_code == 201
         body = res.json()
         assert body["es_producto_final"] is True
         assert body["stock_cantidad"] == 20
 
     def test_crear_producto_con_ingredientes(self, client: TestClient, session: Session, admin_user, categoria_base, ingrediente_base, unidad_g):
-        headers = get_auth_headers(session, admin_user)
+        set_auth_cookie(client, session, admin_user)
         res = client.post(BASE, json={
             "nombre": "Hamburguesa Clásica",
             "descripcion": "Con carne y queso",
@@ -39,12 +41,13 @@ class TestCrearProducto:
                 "unidad_medida_id": unidad_g.id,
                 "cantidad": 150,
             }],
-        }, cookies=headers)
+        })
+        clear_auth_cookie(client)
         assert res.status_code == 201
         assert len(res.json()["ingredientes"]) == 1
 
     def test_producto_final_no_puede_tener_ingredientes(self, client: TestClient, session: Session, admin_user, categoria_base, ingrediente_base, unidad_g):
-        headers = get_auth_headers(session, admin_user)
+        set_auth_cookie(client, session, admin_user)
         res = client.post(BASE, json={
             "nombre": "Inválido",
             "descripcion": "No debería crearse",
@@ -58,11 +61,12 @@ class TestCrearProducto:
                 "unidad_medida_id": unidad_g.id,
                 "cantidad": 100,
             }],
-        }, cookies=headers)
+        })
+        clear_auth_cookie(client)
         assert res.status_code == 422
 
     def test_producto_no_final_requiere_ingredientes(self, client: TestClient, session: Session, admin_user, categoria_base):
-        headers = get_auth_headers(session, admin_user)
+        set_auth_cookie(client, session, admin_user)
         res = client.post(BASE, json={
             "nombre": "Sin ingredientes",
             "descripcion": "Inválido",
@@ -70,11 +74,12 @@ class TestCrearProducto:
             "es_producto_final": False,
             "categorias": [{"categoria_id": categoria_base.id, "es_principal": True}],
             "ingredientes": [],
-        }, cookies=headers)
+        })
+        clear_auth_cookie(client)
         assert res.status_code == 422
 
     def test_crear_producto_nombre_duplicado(self, client: TestClient, session: Session, admin_user, categoria_base, unidad_ud):
-        headers = get_auth_headers(session, admin_user)
+        set_auth_cookie(client, session, admin_user)
         payload = {
             "nombre": "Producto Duplicado",
             "descripcion": "Test",
@@ -84,8 +89,9 @@ class TestCrearProducto:
             "categorias": [{"categoria_id": categoria_base.id, "es_principal": True}],
             "ingredientes": [],
         }
-        client.post(BASE, json=payload, cookies=headers)
-        res = client.post(BASE, json=payload, cookies=headers)
+        client.post(BASE, json=payload)
+        res = client.post(BASE, json=payload)
+        clear_auth_cookie(client)
         assert res.status_code == 409
 
     def test_crear_producto_sin_autenticar(self, client: TestClient, categoria_base):
@@ -101,7 +107,7 @@ class TestCrearProducto:
         assert res.status_code == 401
 
     def test_crear_producto_sin_permiso(self, client: TestClient, session: Session, client_user, categoria_base):
-        headers = get_auth_headers(session, client_user)
+        set_auth_cookie(client, session, client_user)
         res = client.post(BASE, json={
             "nombre": "Sin permiso",
             "descripcion": "Test",
@@ -110,11 +116,13 @@ class TestCrearProducto:
             "stock_cantidad": 1,
             "categorias": [{"categoria_id": categoria_base.id, "es_principal": True}],
             "ingredientes": [],
-        }, cookies=headers)
+        })
+        clear_auth_cookie(client)
         assert res.status_code == 403
 
 
 class TestListarProductos:
+
     def test_listar_productos_publico(self, client: TestClient, producto_final):
         res = client.get(BASE)
         assert res.status_code == 200
@@ -130,6 +138,7 @@ class TestListarProductos:
 
 
 class TestObtenerProducto:
+
     def test_obtener_producto_por_id(self, client: TestClient, producto_final):
         res = client.get(f"{BASE}/{producto_final.id}")
         assert res.status_code == 200
@@ -141,41 +150,49 @@ class TestObtenerProducto:
 
 
 class TestStockProducto:
+
     def test_actualizar_stock_admin(self, client: TestClient, session: Session, admin_user, producto_final):
-        headers = get_auth_headers(session, admin_user)
-        res = client.patch(f"{BASE}/{producto_final.id}/stock", json={"stock_cantidad": 99}, cookies=headers)
+        set_auth_cookie(client, session, admin_user)
+        res = client.patch(f"{BASE}/{producto_final.id}/stock", json={"stock_cantidad": 99})
+        clear_auth_cookie(client)
         assert res.status_code == 200
         assert res.json()["stock_cantidad"] == 99
 
     def test_actualizar_stock_rol_stock(self, client: TestClient, session: Session, stock_user, producto_final):
-        headers = get_auth_headers(session, stock_user)
-        res = client.patch(f"{BASE}/{producto_final.id}/stock", json={"stock_cantidad": 30}, cookies=headers)
+        set_auth_cookie(client, session, stock_user)
+        res = client.patch(f"{BASE}/{producto_final.id}/stock", json={"stock_cantidad": 30})
+        clear_auth_cookie(client)
         assert res.status_code == 200
 
     def test_actualizar_stock_sin_permiso(self, client: TestClient, session: Session, client_user, producto_final):
-        headers = get_auth_headers(session, client_user)
-        res = client.patch(f"{BASE}/{producto_final.id}/stock", json={"stock_cantidad": 1}, cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.patch(f"{BASE}/{producto_final.id}/stock", json={"stock_cantidad": 1})
+        clear_auth_cookie(client)
         assert res.status_code == 403
 
 
 class TestDisponibilidadProducto:
+
     def test_desactivar_producto(self, client: TestClient, session: Session, admin_user, producto_final):
-        headers = get_auth_headers(session, admin_user)
-        res = client.patch(f"{BASE}/{producto_final.id}/desactivar", cookies=headers)
+        set_auth_cookie(client, session, admin_user)
+        res = client.patch(f"{BASE}/{producto_final.id}/desactivar")
+        clear_auth_cookie(client)
         assert res.status_code == 200
         assert res.json()["disponible"] is False
 
     def test_activar_producto(self, client: TestClient, session: Session, admin_user, producto_final):
-        headers = get_auth_headers(session, admin_user)
-        client.patch(f"{BASE}/{producto_final.id}/desactivar", cookies=headers)
-        res = client.patch(f"{BASE}/{producto_final.id}/activar", cookies=headers)
+        set_auth_cookie(client, session, admin_user)
+        client.patch(f"{BASE}/{producto_final.id}/desactivar")
+        res = client.patch(f"{BASE}/{producto_final.id}/activar")
+        clear_auth_cookie(client)
         assert res.status_code == 200
         assert res.json()["disponible"] is True
 
 
 class TestEliminarProducto:
+
     def test_soft_delete_producto(self, client: TestClient, session: Session, admin_user, categoria_base, unidad_ud):
-        headers = get_auth_headers(session, admin_user)
+        set_auth_cookie(client, session, admin_user)
         res = client.post(BASE, json={
             "nombre": "A eliminar",
             "descripcion": "Test",
@@ -184,16 +201,19 @@ class TestEliminarProducto:
             "stock_cantidad": 1,
             "categorias": [{"categoria_id": categoria_base.id, "es_principal": True}],
             "ingredientes": [],
-        }, cookies=headers)
+        })
+        assert res.status_code == 201
         prod_id = res.json()["id"]
 
-        res = client.delete(f"{BASE}/{prod_id}", cookies=headers)
+        res = client.delete(f"{BASE}/{prod_id}")
         assert res.status_code == 200
 
+        clear_auth_cookie(client)
         res = client.get(f"{BASE}/{prod_id}")
         assert res.status_code == 404
 
     def test_eliminar_sin_permiso(self, client: TestClient, session: Session, client_user, producto_final):
-        headers = get_auth_headers(session, client_user)
-        res = client.delete(f"{BASE}/{producto_final.id}", cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.delete(f"{BASE}/{producto_final.id}")
+        clear_auth_cookie(client)
         assert res.status_code == 403

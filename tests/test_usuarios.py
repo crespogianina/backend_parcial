@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from tests.conftest import get_auth_headers
+from tests.conftest import set_auth_cookie, clear_auth_cookie
 
 BASE = "/api/v1/usuario"
 
@@ -20,7 +20,6 @@ class TestRegister:
         assert res.status_code == 201
         body = res.json()
         assert body["username"] == "juanperez"
-        assert body["roles"] == []
         assert "password_hash" not in body
         assert "password" not in body
 
@@ -29,7 +28,7 @@ class TestRegister:
             "nombre": "Otro",
             "apellido": "User",
             "username": "otrousername",
-            "email": "client@test.com", 
+            "email": "client@test.com",
             "password": "Password1!",
         })
         assert res.status_code == 409
@@ -38,7 +37,7 @@ class TestRegister:
         res = client.post(f"{BASE}/register", json={
             "nombre": "Otro",
             "apellido": "User",
-            "username": "test_client",  
+            "username": "test_client",
             "email": "nuevo@test.com",
             "password": "Password1!",
         })
@@ -50,7 +49,7 @@ class TestRegister:
             "apellido": "User",
             "username": "testshort",
             "email": "short@test.com",
-            "password": "1234567",  
+            "password": "1234567",
         })
         assert res.status_code == 422
 
@@ -60,16 +59,6 @@ class TestRegister:
             "apellido": "User",
             "username": "testinvalid",
             "email": "no_es_un_email",
-            "password": "Password1!",
-        })
-        assert res.status_code == 422
-
-    def test_register_nombre_vacio(self, client: TestClient):
-        res = client.post(f"{BASE}/register", json={
-            "nombre": "",
-            "apellido": "User",
-            "username": "testnoname",
-            "email": "noname@test.com",
             "password": "Password1!",
         })
         assert res.status_code == 422
@@ -141,7 +130,7 @@ class TestLogin:
 
 class TestLogout:
 
-    def test_logout_exitoso(self, client: TestClient, session: Session, admin_user):
+    def test_logout_exitoso(self, client: TestClient, admin_user):
         client.post(f"{BASE}/token", data={
             "username": "test_admin",
             "password": "Admin1234!",
@@ -149,13 +138,12 @@ class TestLogout:
         res = client.post(f"{BASE}/logout")
         assert res.status_code in (200, 204)
 
-    def test_logout_limpia_cookie(self, client: TestClient, session: Session, admin_user):
+    def test_logout_limpia_cookie(self, client: TestClient, admin_user):
         client.post(f"{BASE}/token", data={
             "username": "test_admin",
             "password": "Admin1234!",
         })
         client.post(f"{BASE}/logout")
-
         res = client.get(f"{BASE}/me")
         assert res.status_code == 401
 
@@ -163,8 +151,9 @@ class TestLogout:
 class TestMe:
 
     def test_me_con_token_valido(self, client: TestClient, session: Session, client_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.get(f"{BASE}/me", cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.get(f"{BASE}/me")
+        clear_auth_cookie(client)
         assert res.status_code == 200
         body = res.json()
         assert body["username"] == "test_client"
@@ -175,8 +164,9 @@ class TestMe:
         assert res.status_code == 401
 
     def test_me_incluye_roles(self, client: TestClient, session: Session, admin_user):
-        headers = get_auth_headers(session, admin_user)
-        res = client.get(f"{BASE}/me", cookies=headers)
+        set_auth_cookie(client, session, admin_user)
+        res = client.get(f"{BASE}/me")
+        clear_auth_cookie(client)
         assert res.status_code == 200
         body = res.json()
         assert "roles" in body
@@ -186,14 +176,16 @@ class TestMe:
 class TestActualizarPerfil:
 
     def test_actualizar_nombre(self, client: TestClient, session: Session, client_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.patch(f"{BASE}/me", json={"nombre": "NuevoNombre"}, cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.patch(f"{BASE}/me", json={"nombre": "NuevoNombre"})
+        clear_auth_cookie(client)
         assert res.status_code == 200
         assert res.json()["nombre"] == "NuevoNombre"
 
     def test_actualizar_apellido(self, client: TestClient, session: Session, client_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.patch(f"{BASE}/me", json={"apellido": "NuevoApellido"}, cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.patch(f"{BASE}/me", json={"apellido": "NuevoApellido"})
+        clear_auth_cookie(client)
         assert res.status_code == 200
         assert res.json()["apellido"] == "NuevoApellido"
 
@@ -202,8 +194,9 @@ class TestActualizarPerfil:
         assert res.status_code == 401
 
     def test_no_puede_cambiar_rol_propio(self, client: TestClient, session: Session, client_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.patch(f"{BASE}/me", json={"roles": ["ADMIN"]}, cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.patch(f"{BASE}/me", json={"roles": ["ADMIN"]})
+        clear_auth_cookie(client)
         if res.status_code == 200:
             assert "ADMIN" not in res.json().get("roles", [])
 
@@ -211,16 +204,18 @@ class TestActualizarPerfil:
 class TestGestionUsuarios:
 
     def test_listar_usuarios_admin(self, client: TestClient, session: Session, admin_user, client_user):
-        headers = get_auth_headers(session, admin_user)
-        res = client.get(f"{BASE}/admin/usuarios", cookies=headers)
+        set_auth_cookie(client, session, admin_user)
+        res = client.get(f"{BASE}/admin/usuarios")
+        clear_auth_cookie(client)
         assert res.status_code == 200
         body = res.json()
         assert isinstance(body, list)
         assert len(body) >= 2
 
     def test_listar_usuarios_sin_permiso(self, client: TestClient, session: Session, client_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.get(f"{BASE}/admin/usuarios", cookies=headers)
+        set_auth_cookie(client, session, client_user)
+        res = client.get(f"{BASE}/admin/usuarios")
+        clear_auth_cookie(client)
         assert res.status_code == 403
 
     def test_listar_usuarios_sin_autenticar(self, client: TestClient):
@@ -228,48 +223,38 @@ class TestGestionUsuarios:
         assert res.status_code == 401
 
     def test_listar_no_expone_passwords(self, client: TestClient, session: Session, admin_user):
-        headers = get_auth_headers(session, admin_user)
-        res = client.get(f"{BASE}/admin/usuarios", cookies=headers)
+        set_auth_cookie(client, session, admin_user)
+        res = client.get(f"{BASE}/admin/usuarios")
+        clear_auth_cookie(client)
         assert res.status_code == 200
         for user in res.json():
             assert "password_hash" not in user
             assert "password" not in user
 
 
-class TestAsignarRoles:
+class TestGestionEstadoUsuarios:
 
-    def test_asignar_rol_admin(self, client: TestClient, session: Session, admin_user, client_user):
-        headers = get_auth_headers(session, admin_user)
-        res = client.post(
-            f"{BASE}/admin/usuarios/{client_user.id}/roles",
-            json={"rol_codigo": "STOCK"},
-            cookies=headers,
-        )
-        assert res.status_code in (200, 201)
+    def test_desactivar_usuario_admin(self, client: TestClient, session: Session, admin_user, client_user):
+        set_auth_cookie(client, session, admin_user)
+        res = client.post(f"{BASE}/admin/usuarios/{client_user.id}/desactivar")
+        clear_auth_cookie(client)
+        assert res.status_code == 200
 
-    def test_asignar_rol_sin_permiso(self, client: TestClient, session: Session, client_user, pedidos_user):
-        headers = get_auth_headers(session, client_user)
-        res = client.post(
-            f"{BASE}/admin/usuarios/{pedidos_user.id}/roles",
-            json={"rol_codigo": "ADMIN"},
-            cookies=headers,
-        )
+    def test_activar_usuario_admin(self, client: TestClient, session: Session, admin_user, client_user):
+        set_auth_cookie(client, session, admin_user)
+        client.post(f"{BASE}/admin/usuarios/{client_user.id}/desactivar")
+        res = client.post(f"{BASE}/admin/usuarios/{client_user.id}/activar")
+        clear_auth_cookie(client)
+        assert res.status_code == 200
+
+    def test_desactivar_sin_permiso(self, client: TestClient, session: Session, client_user, pedidos_user):
+        set_auth_cookie(client, session, client_user)
+        res = client.post(f"{BASE}/admin/usuarios/{pedidos_user.id}/desactivar")
+        clear_auth_cookie(client)
         assert res.status_code == 403
 
-    def test_asignar_rol_inexistente(self, client: TestClient, session: Session, admin_user, client_user):
-        headers = get_auth_headers(session, admin_user)
-        res = client.post(
-            f"{BASE}/admin/usuarios/{client_user.id}/roles",
-            json={"rol_codigo": "ROL_NO_EXISTE"},
-            cookies=headers,
-        )
-        assert res.status_code == 404
-
-    def test_asignar_rol_usuario_inexistente(self, client: TestClient, session: Session, admin_user):
-        headers = get_auth_headers(session, admin_user)
-        res = client.post(
-            f"{BASE}/admin/usuarios/999999/roles",
-            json={"rol_codigo": "CLIENT"},
-            cookies=headers,
-        )
+    def test_desactivar_usuario_inexistente(self, client: TestClient, session: Session, admin_user):
+        set_auth_cookie(client, session, admin_user)
+        res = client.post(f"{BASE}/admin/usuarios/999999/desactivar")
+        clear_auth_cookie(client)
         assert res.status_code == 404

@@ -231,14 +231,17 @@ class PagoService:
 
         with PagoUnitOfWork(self._session) as uow:
             uow.pagos.add(pago)
-
+            
+            pago_id = pago.id
+            preference_id = pago.mp_preference_id
+            init_point = pago.mp_init_point
+ 
         return PagoCrearResponse(
-            pago_id=pago.id,
-            preference_id=mp_data["preference_id"],
-            init_point=mp_data.get("init_point"),
+            pago_id=pago_id,
+            preference_id=preference_id,
+            init_point=init_point,
             public_key=self._get_mp_public_key(),
-        )
-
+        )   
 
     async def procesar_webhook(self, data: dict, query_params: Optional[dict] = None) -> dict:
         logger.info("Webhook recibido: data=%s qs=%s", data, query_params or {})
