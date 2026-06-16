@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_MAX_ATTEMPTS: int = 5
     AUTH_RATE_LIMIT_WINDOW_MINUTES: int = 15
 
+    LOG_LEVEL: str = "INFO"
+
     MP_ACCESS_TOKEN: Optional[str] = None
     MP_PUBLIC_KEY: Optional[str] = None
     MP_WEBHOOK_URL: Optional[str] = None

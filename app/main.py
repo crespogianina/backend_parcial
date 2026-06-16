@@ -1,24 +1,37 @@
 from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
 from app.core.database import create_db_and_tables
-from app.modules.producto.router import router as producto_router
+from app.core.exceptions.exception_handlers import register_exception_handlers
+from app.core.logger import get_logger, setup_logging
+from app.core.middleware.logging_middleware import LoggingMiddleware
+from app.core.middleware.timing_middleware import TimingMiddleware
 from app.modules.categoria.router import router as categoria_router
-from app.modules.ingrediente.router import router as ingrediente_router
-from app.modules.usuarios.router import router as usuario_router
 from app.modules.direcciones.router import router as direccion_router
-from app.modules.pedido.router import router as pedido_router
-from app.modules.uploads.router import router as uploads_router
-from app.modules.pago.router import router as pago_router
 from app.modules.estadisticas.router import router as estadisticas_router
+from app.modules.ingrediente.router import router as ingrediente_router
+from app.modules.pago.router import router as pago_router
+from app.modules.pedido.router import router as pedido_router
+from app.modules.producto.router import router as producto_router
+from app.modules.uploads.router import router as uploads_router
+from app.modules.usuarios.router import router as usuario_router
+
+setup_logging(settings.LOG_LEVEL)
+logger = get_logger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("app.startup")
     try:
         create_db_and_tables()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("db init failed: %s", e)
     yield
+    logger.info("app.shutdown")
 
 
 app = FastAPI(
@@ -27,6 +40,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+register_exception_handlers(app)
+
+# Orden importa: primero los custom, CORS al final
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(TimingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -68,6 +86,7 @@ def health():
 @app.get("/debug/ws-rooms", tags=["debug"])
 def ws_rooms():
     from app.core.websocket import manager
+
     return {
         "total_connections": manager.get_active_connections_count(),
         "rooms": manager.get_rooms_info(),
