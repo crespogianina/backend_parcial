@@ -140,7 +140,10 @@ class ProductoService:
         factor = FACTORES.get((origen, destino))
 
         if factor is None:
-            raise ValueError(f"No existe conversión entre {origen} y {destino}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"No existe conversión entre '{origen}' y '{destino}'",
+            )
         return cantidad * factor
 
 
@@ -225,15 +228,22 @@ class ProductoService:
     def _recalcular_stock_desde_links(self, producto: Producto) -> int:
         if producto.es_producto_final:
             return producto.stock_cantidad
-        
+
         unidades_posibles = []
 
         for pi in producto.producto_ingredientes:
             if not pi.ingrediente or pi.cantidad <= 0:
                 continue
 
-            unidades = int(pi.ingrediente.stock_cantidad / pi.cantidad)
-            unidades_posibles.append(unidades)
+            if not pi.ingrediente.unidad_medida or not pi.unidad_medida:
+                continue
+
+            stock_convertido = self._convertir_unidad(
+                Decimal(pi.ingrediente.stock_cantidad),
+                pi.ingrediente.unidad_medida.simbolo,
+                pi.unidad_medida.simbolo,
+            )
+            unidades_posibles.append(int(stock_convertido / pi.cantidad))
 
         return min(unidades_posibles) if unidades_posibles else 0
 
@@ -392,7 +402,7 @@ class ProductoService:
             if data.stock_cantidad is not None and producto.es_producto_final:
                 producto.stock_cantidad = data.stock_cantidad
 
-            producto.updated_at = datetime.utcnow()
+            producto.updated_at = datetime.now(timezone.utc)
             uow.productos.add(producto)
             result = self._to_producto_public(producto)
 

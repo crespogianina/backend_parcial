@@ -42,7 +42,6 @@ class ProductoRepository(BaseRepository[Producto]):
     
     ############################################################ 
 
-
     def get_by_nombre(self, nombre: str) -> Producto | None:
         statement = select(Producto).where(func.lower(Producto.nombre) == nombre.lower())
 
@@ -153,8 +152,9 @@ class ProductoRepository(BaseRepository[Producto]):
     def get_all_unidad_medida(self) -> list[UnidadMedida]:
         return self.session.exec(select(UnidadMedida)).all()
 
+
     def get_removibles_ids(self, producto_id: int) -> set[int]:
-        rows = self._session.exec(
+        rows = self.session.exec(
             select(ProductoIngrediente.ingrediente_id)
             .where(ProductoIngrediente.producto_id == producto_id)
             .where(ProductoIngrediente.es_removible == True)

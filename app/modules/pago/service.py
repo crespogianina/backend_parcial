@@ -228,13 +228,15 @@ class PagoService:
             mp_preference_id=mp_data["preference_id"],
             mp_init_point=mp_data.get("init_point"),
         )
-        uow.pagos.add(pago)
-        
+
+        with PagoUnitOfWork(self._session) as uow:
+            uow.pagos.add(pago)
+
         return PagoCrearResponse(
-            pago_id=pago.id,                     
-            preference_id=mp_data["preference_id"],  
-            init_point=mp_data.get("init_point"),     
-            public_key=self._get_mp_public_key(),    
+            pago_id=pago.id,
+            preference_id=mp_data["preference_id"],
+            init_point=mp_data.get("init_point"),
+            public_key=self._get_mp_public_key(),
         )
 
 
