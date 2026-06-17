@@ -490,7 +490,13 @@ class ProductoService:
             self._get_or_404(uow, producto_id)
             ingredientes = uow.productos.get_ingredientes_by_producto(producto_id)
 
-            return [IngredientePublic.model_validate(ingrediente) for ingrediente in ingredientes]
+            return [
+                IngredientePublic.model_validate(
+                    ingrediente,
+                    update={"activo": ingrediente.deleted_at is None}
+                )
+                for ingrediente in ingredientes
+            ]
 
 
     def asociar_ingrediente(self, producto_id: int, data: IngredienteAsignar) -> ProductoPublic:
