@@ -4,6 +4,7 @@ from app.core.database import engine, create_db_and_tables
 from app.core.security import hash_password
 from app.modules.usuarios.model import Rol, Usuario, UsuarioRol
 from app.modules.pedido.models import EstadoPedido, FormaPago
+from app.modules.producto.models import UnidadMedida
 
 ROLES = [
     {"codigo": "ADMIN",   "nombre": "Administrador", "descripcion": "Acceso total sin restricciones"},
@@ -17,7 +18,7 @@ USUARIOS = [
         "username": "admin",
         "nombre":   "Administrador",
         "apellido": "Sistema",
-        "email":    "admin@example.com",
+        "email":    "admin@foodstore.com",
         "password": "Admin1234!",
         "roles":    ["ADMIN"],
     },
@@ -28,6 +29,22 @@ USUARIOS = [
         "email":    "juan@example.com",
         "password": "Juan1234!",
         "roles":    ["CLIENT"],
+    },
+    {
+        "username": "stock",
+        "nombre":   "María",
+        "apellido": "García",
+        "email":    "stock@foodstore.com",
+        "password": "Stock1234!",
+        "roles":    ["STOCK"],
+    },
+    {
+        "username": "pedidos",
+        "nombre":   "Carlos",
+        "apellido": "López",
+        "email":    "pedidos@foodstore.com",
+        "password": "Pedidos1234!",
+        "roles":    ["PEDIDOS"],
     },
 ]
 
@@ -41,8 +58,18 @@ ESTADOS_PEDIDO = [
 ]
 
 FORMAS_PAGO = [
-    {"codigo": "MP",       "descripcion": "Mercado Pago", "habilitado": True},
+    {"codigo": "MERCADOPAGO", "descripcion": "Mercado Pago", "habilitado": True},  # 👈
     {"codigo": "EFECTIVO", "descripcion": "Efectivo",     "habilitado": True},
+    {"codigo": "TRANSFERENCIA", "descripcion": "Transferencia", "habilitado": True},
+]
+
+UNIDADES_MEDIDA = [
+    {"nombre": "Kilogramo", "simbolo": "kg",  "tipo": "peso",     "factor": 1000},
+    {"nombre": "Gramo",     "simbolo": "g",   "tipo": "peso",     "factor": 1},
+    {"nombre": "Litro",     "simbolo": "L",   "tipo": "volumen",  "factor": 1000},
+    {"nombre": "Mililitro", "simbolo": "ml",  "tipo": "volumen",  "factor": 1},
+    {"nombre": "Unidad",    "simbolo": "ud",  "tipo": "contable", "factor": 1},
+    {"nombre": "Porción",   "simbolo": "porciones", "tipo": "contable", "factor": 1},
 ]
 
 def seed_roles(session: Session) -> None:
@@ -123,6 +150,21 @@ def seed_formas_pago(session: Session) -> None:
             print(f"  [+] Creado:    {data['codigo']}")
     session.commit()
 
+
+def seed_unidades_medida(session: Session) -> None:
+    print("\n── Unidades de Medida ──")
+    for data in UNIDADES_MEDIDA:
+        existing = session.exec(
+            select(UnidadMedida).where(UnidadMedida.simbolo == data["simbolo"])
+        ).first()
+        if existing:
+            print(f"  [=] Ya existe: {data['simbolo']}")
+        else:
+            session.add(UnidadMedida(**data))
+            print(f"  [+] Creado:    {data['simbolo']}")
+    session.commit()
+
+
 def run() -> None:
     print("=== Seed — Food Store ===")
     create_db_and_tables()
@@ -132,10 +174,13 @@ def run() -> None:
         seed_usuarios(session)
         seed_estados_pedido(session)
         seed_formas_pago(session)
+        seed_unidades_medida(session)
 
     print("\n── Usuarios disponibles ──")
-    print("  admin / Admin1234!  → ADMIN")
-    print("  juan  / Juan1234!   → CLIENT")
+    print("  admin   / Admin1234!   → ADMIN")
+    print("  juan    / Juan1234!    → CLIENT")
+    print("  stock   / Stock1234!   → STOCK")
+    print("  pedidos / Pedidos1234! → PEDIDOS")
     print()
 
 

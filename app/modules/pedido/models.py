@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import ARRAY, BigInteger, Column, ForeignKey, Integer, Numeric, PrimaryKeyConstraint, String, Boolean, Text
 from sqlmodel import Relationship, SQLModel, Field
 
+
 if TYPE_CHECKING:
+    from app.modules.pago.models import Pago
     from app.modules.direcciones.model import DireccionEntrega
     from app.modules.producto.models import Producto
     from app.modules.usuarios.model import Usuario
@@ -92,7 +94,7 @@ class Pedido(SQLModel, table=True):
         back_populates="pedido",
         sa_relationship_kwargs={ "cascade": "all, delete-orphan", "order_by": "HistorialEstadoPedido.created_at", "lazy": "selectin"}
     )
-
+    pagos: List["Pago"] = Relationship(back_populates="pedido")
 
 class DetallePedido(SQLModel, table=True):
     __tablename__ = "detalles_pedido"
@@ -126,10 +128,13 @@ class HistorialEstadoPedido(SQLModel, table=True):
     id: Optional[int] = Field(default=None,sa_column=Column(BigInteger, primary_key=True, autoincrement=True))
 
     pedido_id: int = Field(sa_column=Column(BigInteger, ForeignKey("pedidos.id"), nullable=False))
-    estado_desde: str = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=False))
-    estado_hacia: Optional[str] = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=True))
+    estado_desde: Optional[str] = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=True))
+    estado_hacia: str = Field(sa_column=Column(String(20), ForeignKey("estado_pedido.codigo"), nullable=False))
 
-    usuario_id: int = Field(sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=False))
+    usuario_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(BigInteger, ForeignKey("usuarios.id"), nullable=True),
+    )
 
     motivo: Optional[str] = Field( default=None, sa_column=Column(Text, nullable=True))
     
@@ -143,7 +148,7 @@ class HistorialEstadoPedido(SQLModel, table=True):
         back_populates="historial_estado_desde",
         sa_relationship_kwargs={ "foreign_keys": "[HistorialEstadoPedido.estado_desde]", "lazy": "joined"}
     )
-    estado_hacia_rel: Optional["EstadoPedido"] = Relationship(
+    estado_hacia_rel: "EstadoPedido" = Relationship(
         back_populates="historial_estado_hacia",
         sa_relationship_kwargs={
             "foreign_keys": "[HistorialEstadoPedido.estado_hacia]","lazy": "joined"}

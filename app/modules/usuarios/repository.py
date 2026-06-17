@@ -1,14 +1,13 @@
 from typing import Optional
-
-from sqlmodel import Session, select
+from sqlmodel import Session, select, or_
 from app.core.repository import BaseRepository
 from app.modules.usuarios.model import Usuario, UsuarioRol
-
 
 class UsuarioRepository(BaseRepository[Usuario]):
 
     def __init__(self, session: Session):
         super().__init__(session, Usuario)
+
 
     def get_by_username(self, username: str) -> Usuario | None:
         statement = select(Usuario).where(Usuario.username == username) 
@@ -29,7 +28,14 @@ class UsuarioRepository(BaseRepository[Usuario]):
         return usuario_rol
     
 
-    def get_all_usuarios(self, rol: Optional[str] = None, offset: int = 0, limit: int = 50) -> list[Usuario]:
+    def get_all_usuarios(
+        self, 
+        rol: Optional[str] = None, 
+        nombre: Optional[str] = None, 
+        email: Optional[str] = None, 
+        offset: int = 0, 
+        limit: int = 50
+    ) -> list[Usuario]:
         statement = select(Usuario)
 
         if rol:
@@ -40,4 +46,18 @@ class UsuarioRepository(BaseRepository[Usuario]):
                 .distinct()
             )
 
-        return list(self.session.exec(statement.offset(offset).limit(limit)).all())
+        if nombre:
+            termino = f"%{nombre}%"
+            statement = statement.where(
+                or_(
+                    Usuario.nombre.ilike(termino),
+                    Usuario.apellido.ilike(termino)
+                )
+            )
+
+        if email:
+            statement = statement.where(Usuario.email.ilike(f"%{email}%"))
+
+        statement = statement.order_by(Usuario.id).offset(offset).limit(limit)
+
+        return list(self.session.exec(statement).all())

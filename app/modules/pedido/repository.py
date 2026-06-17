@@ -22,8 +22,11 @@ class DetallePedidoRepository(BaseRepository[DetallePedido]):
 class HistorialEstadoPedidoRepository(BaseRepository[HistorialEstadoPedido]):
     def __init__(self, session: Session) -> None:
         super().__init__(session, HistorialEstadoPedido)
+    
 
-
+    def obtener_historial_pedidos(self, pedido_id):
+        statement = select(HistorialEstadoPedido).where(HistorialEstadoPedido.pedido_id == pedido_id)
+        return exec(statement).all()
 
 class FormaPagoRepository(BaseRepository[FormaPago]):
     def __init__(self, session: Session) -> None:
@@ -84,11 +87,25 @@ class PedidoRepository(BaseRepository[Pedido]):
 
 
     def count_all_pedidos(
-            self, 
-            usuario_id: Optional[int] = None,
-            estado: Optional[str] = None,
-            fecha_desde: Optional[date] = None,
-            fecha_hasta: Optional[date] = None
-        ) -> int:
-        statement = self._apply_filters(select(func.count()).select_from(Pedido), usuario_id, estado, fecha_desde, fecha_hasta)
+        self,
+        usuario_id: Optional[int] = None,
+        estado: Optional[str] = None,
+        fecha_desde: Optional[date] = None,
+        fecha_hasta: Optional[date] = None,
+    ) -> int:
+        statement = self._apply_filters(
+            select(func.count()).select_from(Pedido),
+            estado=estado,
+            usuario_id=usuario_id,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+        )
+
         return self.session.exec(statement).one()
+    
+    def get_with_lock(self, pedido_id: int) -> Optional[Pedido]:
+        return self.session.exec(
+            select(Pedido)
+            .where(Pedido.id == pedido_id)
+            .with_for_update()
+        ).first()

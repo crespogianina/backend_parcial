@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import computed_field
 from pydantic_settings import BaseSettings
 
@@ -19,11 +21,25 @@ class Settings(BaseSettings):
         )
 
 
-    # ─── JWT ──────────────────────────────────────────────────────────────────
     SECRET_KEY: str                    
     ALGORITHM:  str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    AUTH_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    AUTH_RATE_LIMIT_WINDOW_MINUTES: int = 15
+
+    LOG_LEVEL: str = "INFO"
+
+    MP_ACCESS_TOKEN: Optional[str] = None
+    MP_PUBLIC_KEY: Optional[str] = None
+    MP_WEBHOOK_URL: Optional[str] = None
+    NGROK_URL: Optional[str] = None
+
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
+
+    VITE_FRONTEND_URL: str 
     
     model_config = {
         "env_file": ".env",

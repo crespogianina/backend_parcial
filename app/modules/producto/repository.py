@@ -2,10 +2,10 @@ from typing import List, Optional
 from sqlalchemy import Select
 from sqlmodel import Session, func, select
 from app.core.repository import BaseRepository
-from app.modules.producto.models import Producto, ProductoCategoria,ProductoIngrediente
+from app.modules.producto.models import Producto, ProductoCategoria,ProductoIngrediente, UnidadMedida
 from app.modules.categoria.models import Categoria
 from app.modules.ingrediente.models import Ingrediente 
-
+from sqlalchemy.orm import selectinload
 
 class ProductoRepository(BaseRepository[Producto]):
     
@@ -42,7 +42,6 @@ class ProductoRepository(BaseRepository[Producto]):
     
     ############################################################ 
 
-
     def get_by_nombre(self, nombre: str) -> Producto | None:
         statement = select(Producto).where(func.lower(Producto.nombre) == nombre.lower())
 
@@ -69,8 +68,19 @@ class ProductoRepository(BaseRepository[Producto]):
             offset: int = 0, 
             limit: int = 50
         ) -> list[Producto]:
-        statement = self._apply_filters(select(Producto), nombre, descripcion, disponible, categoria_id)
-        statement = statement.offset(offset).limit(limit).order_by(Producto.nombre.desc())
+        statement = self._apply_filters(
+            select(Producto),
+            nombre,
+            descripcion,
+            disponible,
+            categoria_id
+        ).options(
+            selectinload(Producto.unidad_medida),
+            selectinload(Producto.producto_categorias).selectinload(ProductoCategoria.categoria),
+            selectinload(Producto.producto_ingredientes).selectinload(ProductoIngrediente.ingrediente),
+        )
+        
+        statement = statement.offset(offset).limit(limit).order_by(Producto.nombre.asc())
 
         return list(self.session.exec(statement).all())
 
@@ -133,3 +143,20 @@ class ProductoRepository(BaseRepository[Producto]):
             self.session.delete(link)
 
         self.session.flush()
+
+
+    def get_unidad_medida(self, unidad_medida_id: int) -> UnidadMedida:
+        return self.session.get(UnidadMedida, unidad_medida_id)
+
+
+    def get_all_unidad_medida(self) -> list[UnidadMedida]:
+        return self.session.exec(select(UnidadMedida)).all()
+
+
+    def get_removibles_ids(self, producto_id: int) -> set[int]:
+        rows = self.session.exec(
+            select(ProductoIngrediente.ingrediente_id)
+            .where(ProductoIngrediente.producto_id == producto_id)
+            .where(ProductoIngrediente.es_removible == True)
+        ).all()
+        return set(rows)

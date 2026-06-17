@@ -6,6 +6,7 @@ from app.core.database import get_session
 from app.core.deps import require_role
 from app.modules.categoria.schemas import CategoriaCreate, CategoriaPublic, CategoriaTreeRead, CategoriaUpdate, CategoriaList
 from app.modules.categoria.service import CategoriaService
+from app.modules.uploads.schemas import ImagenCategoriaUpdate
 from app.modules.usuarios.schemas import UserPublic
 
 router = APIRouter()
@@ -42,7 +43,7 @@ def get_categorias_tree(_admin: Annotated[UserPublic, Depends(require_role(["ADM
 
 
 @router.get("/{id}", response_model=CategoriaPublic, status_code=status.HTTP_200_OK, summary="Obtener categoria por id")
-def get_categoria_por_id(id: Annotated[int, Path(gt=0)], _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))], svc: CategoriaService = Depends(get_categoria_service)) -> CategoriaPublic:
+def get_categoria_por_id(id: Annotated[int, Path(gt=0)], svc: CategoriaService = Depends(get_categoria_service)) -> CategoriaPublic:
     return svc.get_by_id(id)
 
 
@@ -54,6 +55,21 @@ def edit_categoria(
     svc: CategoriaService = Depends(get_categoria_service)
 ) -> CategoriaPublic:
     return svc.update(id, categoria)
+
+
+@router.patch(
+    "/{id}/imagen",
+    response_model=CategoriaPublic,
+    status_code=status.HTTP_200_OK,
+    summary="Actualizar imagen de categoria (ADMIN)",
+)
+def actualizar_imagen_categoria(
+    id: Annotated[int, Path(gt=0)],
+    data: ImagenCategoriaUpdate,
+    _admin: Annotated[UserPublic, Depends(require_role(["ADMIN"]))],
+    svc: CategoriaService = Depends(get_categoria_service),
+) -> CategoriaPublic:
+    return svc.actualizar_imagen(id, data.imagen_url)
 
 
 @router.delete("/{id}", status_code=status.HTTP_200_OK, response_model=dict, summary="Eliminar categoria por id")
