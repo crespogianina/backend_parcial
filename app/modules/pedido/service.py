@@ -200,7 +200,16 @@ class PedidoService:
             uow.productos.add(producto)
 
             if not producto.es_producto_final:
+                removidos = set(detalle.personalizacion or [])
+
                 for pi in producto.producto_ingredientes:
+                    if pi.ingrediente_id in removidos:
+                        logger.info(
+                            "Ingrediente removido por personalización, se omite descuento: ingrediente=%s",
+                            pi.ingrediente_id,
+                        )
+                        continue
+
                     ingrediente = uow.ingredientes.get_with_lock(pi.ingrediente_id)
                     if not ingrediente:
                         continue
@@ -224,6 +233,7 @@ class PedidoService:
                         ingrediente.id, ingrediente.stock_cantidad,
                     )
                     uow.ingredientes.add(ingrediente)
+
 
     def _validar_direccion(self, direccion_id: int, usuario_id: int, uow: PedidoUnitOfWork) -> None:
         direccion: DireccionPublic = uow.direcciones.get_by_id(direccion_id)
@@ -374,7 +384,16 @@ class PedidoService:
                 uow.productos.add(producto)
 
                 if not producto.es_producto_final:
+                    removidos = set(detalle.personalizacion or [])
+
                     for pi in producto.producto_ingredientes:
+                        if pi.ingrediente_id in removidos:
+                            logger.info(
+                                "Ingrediente removido por personalización, se omite devolución: ingrediente=%s",
+                                pi.ingrediente_id,
+                            )
+                            continue
+
                         ingrediente = uow.ingredientes.get_with_lock(pi.ingrediente_id)
                         if not ingrediente:
                             continue
